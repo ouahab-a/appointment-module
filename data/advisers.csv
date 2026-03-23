@@ -1,0 +1,6 @@
+id,name,mail,pass,agency_id,specializations,working_hours
+1,Ahmed Benali,ahmed.benali@agency.ma,Adviser@2024!,1,"Conseil financier,Services emploi","{""monday"":[""09:00"",""17:00""],""tuesday"":[""09:00"",""17:00""],""wednesday"":[""09:00"",""17:00""],""thursday"":[""09:00"",""17:00""],""friday"":[""09:00"",""17:00""]}"
+2,Fatima Zahra Idrissi,fatima.idrissi@agency.ma,Adviser@2024!,1,"Conseil carrière,Orientation éducative","{""monday"":[""08:30"",""16:30""],""tuesday"":[""08:30"",""16:30""],""wednesday"":[""08:30"",""16:30""],""thursday"":[""08:30"",""16:30""]}"
+3,Karim Mansouri,karim.mansouri@agency.ma,Adviser@2024!,2,"Consultation juridique,Services immigration","{""monday"":[""09:00"",""17:00""],""tuesday"":[""09:00"",""17:00""],""wednesday"":[""09:00"",""17:00""],""thursday"":[""09:00"",""17:00""],""friday"":[""09:00"",""17:00""]}"
+4,Sara Alaoui,sara.alaoui@agency.ma,Adviser@2024!,3,"Services de santé,Aide au logement","{""monday"":[""09:00"",""17:00""],""tuesday"":[""09:00"",""17:00""],""thursday"":[""09:00"",""17:00""],""friday"":[""09:00"",""17:00""]}"
+5,Youssef El Amrani,youssef.elamrani@agency.ma,Adviser@2024!,4,"Conseil financier,Consultation juridique","{""monday"":[""08:00"",""16:30""],""tuesday"":[""08:00"",""16:30""],""wednesday"":[""08:00"",""16:30""],""thursday"":[""08:00"",""16:30""],""friday"":[""08:00"",""16:30""]}"

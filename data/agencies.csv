@@ -1,0 +1,5 @@
+id,name,address,city,phone,email,opening_hours
+1,Casa Hay Mohammadi,Rue 10 Quartier Hay Mohammadi,Casablanca,+212522000001,contact@agency-haymohammadi.ma,"Lun-Ven 08h30-17h00"
+2,Casa Sidi Maarouf,Boulevard Sidi Maarouf N°45,Casablanca,+212522000002,contact@agency-sidimaarouf.ma,"Lun-Ven 08h30-17h00"
+3,Casa Bernoussi,Avenue Bernoussi N°12,Casablanca,+212522000003,contact@agency-bernoussi.ma,"Lun-Sam 09h00-16h00"
+4,Agadir Hassan II,Avenue Hassan II N°78,Agadir,+212528000001,contact@agency-agadir.ma,"Lun-Ven 08h00-16h30"

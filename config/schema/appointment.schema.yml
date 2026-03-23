@@ -1,0 +1,34 @@
+appointment.settings:
+  type: config_object
+  label: 'Appointment settings'
+  mapping:
+    slot_duration:
+      type: integer
+      label: 'Slot duration in minutes'
+    booking_window:
+      type: integer
+      label: 'Booking window in days'
+    min_notice:
+      type: integer
+      label: 'Minimum notice in hours'
+    sender_name:
+      type: string
+      label: 'Sender name'
+    sender_email:
+      type: email
+      label: 'Sender email'
+    send_confirmation:
+      type: boolean
+      label: 'Send confirmation email'
+    send_reminder:
+      type: boolean
+      label: 'Send reminder email'
+    calendar_first_day:
+      type: integer
+      label: 'First day of week'
+    calendar_min_time:
+      type: string
+      label: 'Calendar start time'
+    calendar_max_time:
+      type: string
+      label: 'Calendar end time'

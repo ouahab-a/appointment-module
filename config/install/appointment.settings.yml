@@ -1,0 +1,10 @@
+slot_duration: 30
+booking_window: 14
+min_notice: 2
+sender_name: 'Service Rendez-vous'
+sender_email: 'noreply@example.com'
+send_confirmation: true
+send_reminder: false
+calendar_first_day: 1
+calendar_min_time: '08:00:00'
+calendar_max_time: '18:00:00'

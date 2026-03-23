@@ -1,0 +1,239 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for Appointment module.
+ */
+
+use Drupal\Core\Render\Element;
+use Drupal\Core\Render\Markup;
+
+/**
+ * Implements hook_theme().
+ */
+function appointment_theme(): array
+{
+  return [
+    'appointment_confirmation' => [
+      'variables' => [
+        'reference'      => NULL,
+        'date'           => NULL,
+        'time'           => NULL,
+        'agency'         => NULL,
+        'adviser'        => NULL,
+        'customer_name'  => NULL,
+        'customer_email' => NULL,
+        'customer_phone' => NULL,
+      ],
+    ],
+    'appointment_booking_progress' => [
+      'variables' => [
+        'steps'        => [],
+        'current_step' => 1,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Prepares variables for agency templates.
+ *
+ * Default template: agency.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the agency information and any
+ *     fields attached to the entity.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_agency(array &$variables): void
+{
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+
+/**
+ * Prepares variables for appointment templates.
+ *
+ * Default template: appointment.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the appointment information and any
+ *     fields attached to the entity.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_appointment(array &$variables): void
+{
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+
+/**
+ * Implements hook_mail().
+ *
+ * Construit les emails envoyés par EmailService.
+ * Appelé automatiquement par MailManager::mail().
+ */
+function appointment_mail(string $key, array &$message, array $params): void
+{
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8';
+  $message['headers']['MIME-Version'] = '1.0';
+
+  $name = $params['customer_name'];
+  $ref  = $params['reference'];
+  $date = $params['date_label'];
+  $time = $params['time_label'];
+  $ag   = $params['agency_name'];
+  $adv  = $params['adviser_name'];
+  $type = $params['rdv_type'];
+
+  switch ($key) {
+    case 'confirmation':
+      $message['subject'] = "Confirmation de votre rendez-vous {$ref}";
+      $body = "
+        <p>Bonjour <strong>{$name}</strong>,</p>
+        <p>Votre rendez-vous a bien été enregistré.</p>
+        <table style='width:100%; border-collapse: collapse;'>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Référence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ref}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Type</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$type}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Agence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ag}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Conseiller</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$adv}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Date</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$date}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Heure</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$time}</td></tr>
+        </table>
+        <p>Vous pouvez modifier votre RDV en renseignant votre numéro de téléphone 
+           sur <a href='/modifier-rendez-vous'>cette page</a>.</p>
+        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
+      ";
+      // Markup::create est LA clé pour que Symfony Mailer affiche du HTML
+      $message['body'][] = Markup::create($body);
+      break;
+
+    case 'modification':
+      $message['subject'] = "Modification de votre rendez-vous {$ref}";
+      $body = "
+        <p>Bonjour <strong>{$name}</strong>,</p>
+        <p>Votre rendez-vous a bien été modifié.</p>
+        <table style='width:100%; border-collapse: collapse;'>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Référence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ref}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Agence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ag}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Conseiller</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$adv}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Nouvelle date</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$date}</td></tr>
+          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Nouvel horaire</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$time}</td></tr>
+        </table>
+        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
+      ";
+      $message['body'][] = Markup::create($body);
+      break;
+
+    case 'cancellation':
+      $message['subject'] = "Annulation de votre rendez-vous {$ref}";
+      $body = "
+        <p>Bonjour <strong>{$name}</strong>,</p>
+        <p>Votre rendez-vous du <strong>{$date}</strong> à <strong>{$time}</strong> a bien été annulé.</p>
+        <p>Référence annulée : <strong>{$ref}</strong></p>
+        <p>Pour prendre un nouveau rendez-vous : <a href='/prendre-un-rendez-vous'>cliquez ici</a>.</p>
+        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
+      ";
+      $message['body'][] = Markup::create($body);
+      break;
+  }
+}
+
+/**
+ * Implements hook_views_data_alter().
+ *
+ * Améliore les filtres Views pour les champs entity_reference
+ * de l'entité appointment.
+ */
+function appointment_views_data_alter(array &$data): void
+{
+  // Filtre Agence → select list des agences disponibles
+  if (isset($data['appointment']['agency'])) {
+    $data['appointment']['agency']['filter']['id'] = 'in_operator';
+    $data['appointment']['agency']['filter']['options callback'] = '_appointment_views_agency_options';
+  }
+
+  // Filtre Type → select list des types disponibles
+  if (isset($data['appointment']['appointment_type'])) {
+    $data['appointment']['appointment_type']['filter']['id'] = 'in_operator';
+    $data['appointment']['appointment_type']['filter']['options callback'] = '_appointment_views_type_options';
+  }
+}
+
+/**
+ * Options callback pour le filtre Agence.
+ *
+ * @return array [agency_id => label]
+ */
+function _appointment_views_agency_options(): array
+{
+  $options = ['-- Toutes les agences --'];
+  $agencies = \Drupal::entityTypeManager()
+    ->getStorage('agency')
+    ->loadByProperties(['status' => 1]);
+  foreach ($agencies as $agency) {
+    $options[$agency->id()] = $agency->label();
+  }
+  return $options;
+}
+
+/**
+ * Options callback pour le filtre Type de rendez-vous.
+ *
+ * @return array [term_id => label]
+ */
+function _appointment_views_type_options(): array
+{
+  $options = ['-- Tout --'];
+  $terms = \Drupal::entityTypeManager()
+    ->getStorage('taxonomy_term')
+    ->loadByProperties(['vid' => 'appointment_type', 'status' => 1]);
+  foreach ($terms as $term) {
+    $options[$term->id()] = $term->label();
+  }
+  return $options;
+}
+
+/**
+ * Implements hook_views_data().
+ */
+function appointment_views_data(): array
+{
+  $data = [];
+
+  $data['appointment']['appointment_date_formatted'] = [
+    'title' => t('Date formatée'),
+    'help'  => t('Date du RDV formatée en d/m/Y H:i.'),
+    'field' => [
+      'id'       => 'appointment_date_formatted',
+      'real field' => 'appointment_date',
+    ],
+  ];
+
+  return $data;
+}
+
+
+// /**
+//  * Implements hook_views_data_alter().
+//  *
+//  * Corrige le handler du champ appointment_date pour Views.
+//  */
+// function appointment_views_data_alter(array &$data): void {
+//   if (isset($data['appointment__appointment_date']['appointment_date'])) {
+//     $data['appointment__appointment_date']['appointment_date']['field']['id'] = 'date';
+//   }
+
+//   // Alias direct sur la table principale
+//   if (isset($data['appointment']['appointment_date'])) {
+//     $data['appointment']['appointment_date']['field']['id'] = 'date';
+//   }
+// }

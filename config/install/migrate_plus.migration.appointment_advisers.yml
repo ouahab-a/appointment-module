@@ -1,0 +1,68 @@
+langcode: fr
+status: true
+dependencies: {  }
+id: appointment_advisers
+class: null
+idMap: {  }
+field_plugin_method: null
+cck_plugin_method: null
+migration_tags: {  }
+migration_group: appointment
+label: 'Import des conseillers'
+source:
+  plugin: csv
+  path: modules/custom/appointment/data/advisers.csv
+  delimiter: ','
+  enclosure: '"'
+  header_row_count: 1
+  ids:
+    - id
+  column_names:
+    -
+      id: ID
+    -
+      name: 'Nom complet'
+    -
+      mail: Email
+    -
+      pass: 'Mot de passe'
+    -
+      agency_id: 'ID Agence'
+    -
+      specializations: Spécialisations
+    -
+      working_hours: Horaires
+process:
+  name: mail
+  mail: mail
+  pass: pass
+  status:
+    plugin: default_value
+    default_value: 1
+  roles:
+    plugin: default_value
+    default_value:
+      - adviser
+  field_adviser_agency/target_id:
+    plugin: migration_lookup
+    migration: appointment_agencies
+    source: agency_id
+  field_adviser_hours: working_hours
+  field_adviser_specializations:
+    -
+      plugin: explode
+      source: specializations
+      delimiter: ','
+    -
+      plugin: entity_lookup
+      entity_type: taxonomy_term
+      bundle_key: vid
+      bundle: appointment_type
+      value_key: name
+      ignore_case: true
+destination:
+  plugin: 'entity:user'
+migration_dependencies:
+  required:
+    - appointment_agencies
+include: null

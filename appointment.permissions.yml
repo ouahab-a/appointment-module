@@ -1,0 +1,39 @@
+administer agency:
+  title: 'Administrer les agences'
+  restrict access: true
+
+view agency:
+  title: 'Voir les agences'
+
+edit agency:
+  title: 'Modifier les agences'
+
+delete agency:
+  title: 'Supprimer les agences'
+
+create agency:
+  title: 'Créer des agences'
+
+administer appointment:
+  title: 'Administrer les rendez-vous'
+  restrict access: true
+
+view appointment:
+  title: 'Voir les rendez-vous'
+
+edit appointment:
+  title: 'Modifier les rendez-vous'
+
+delete appointment:
+  title: 'Supprimer les rendez-vous'
+
+create appointment:
+  title: 'Créer des rendez-vous'
+
+administer appointment configuration:
+  title: 'Administrer la configuration des rendez-vous'
+  restrict access: true
+
+access appointment booking:
+  title: 'Accéder au formulaire de réservation'
+  description: 'Permet de prendre et modifier des rendez-vous.'

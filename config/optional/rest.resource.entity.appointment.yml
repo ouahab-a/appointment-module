@@ -1,0 +1,35 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - appointment
+    - serialization
+    - user
+id: entity.appointment
+plugin_id: 'entity:appointment'
+granularity: method
+configuration:
+  GET:
+    supported_formats:
+      - json
+      - xml
+    supported_auth:
+      - cookie
+  POST:
+    supported_formats:
+      - json
+      - xml
+    supported_auth:
+      - cookie
+  PATCH:
+    supported_formats:
+      - json
+      - xml
+    supported_auth:
+      - cookie
+  DELETE:
+    supported_formats:
+      - json
+      - xml
+    supported_auth:
+      - cookie

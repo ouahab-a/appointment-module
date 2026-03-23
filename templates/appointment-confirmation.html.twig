@@ -1,0 +1,59 @@
+{#
+/**
+ * @file
+ * Template pour la page de confirmation de rendez-vous.
+ *
+ * Variables:
+ * - reference: Référence unique du RDV (ex: RDV-2026-00001)
+ * - date: Date formatée (ex: 18/03/2026)
+ * - time: Heure formatée (ex: 15h00 - 15h30)
+ * - agency: Nom de l'agence
+ * - adviser: Nom du conseiller
+ * - customer_name: Nom complet du client
+ * - customer_email: Email du client
+ * - customer_phone: Téléphone du client
+ */
+#}
+<div class="appointment-confirmation">
+  <div class="appointment-confirmation__icon">✓</div>
+
+  <h2 class="appointment-confirmation__title">
+    {{ 'Votre rendez-vous a bien été enregistré'|t }}
+  </h2>
+
+  <p class="appointment-confirmation__ref">
+    {{ 'Référence : <strong>@ref</strong>'|t({'@ref': reference})|raw }}
+  </p>
+
+  <div class="appointment-confirmation__details">
+    <div class="appointment-confirmation__section">
+      <h3>{{ 'Votre rendez-vous'|t }}</h3>
+      <dl>
+        <dt>{{ 'Date'|t }}</dt>
+        <dd>{{ date }}</dd>
+        <dt>{{ 'Heure'|t }}</dt>
+        <dd>{{ time }}</dd>
+        <dt>{{ 'Agence'|t }}</dt>
+        <dd>{{ agency }}</dd>
+        <dt>{{ 'Conseiller'|t }}</dt>
+        <dd>{{ adviser }}</dd>
+      </dl>
+    </div>
+
+    <div class="appointment-confirmation__section">
+      <h3>{{ 'Vos informations'|t }}</h3>
+      <dl>
+        <dt>{{ 'Nom'|t }}</dt>
+        <dd>{{ customer_name }}</dd>
+        <dt>{{ 'Email'|t }}</dt>
+        <dd>{{ customer_email }}</dd>
+        <dt>{{ 'Téléphone'|t }}</dt>
+        <dd>{{ customer_phone }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <p class="appointment-confirmation__hint">
+    {{ 'Vous pouvez modifier votre RDV sur <a href="@url">cette page</a>.'|t({'@url': '/modifier-rendez-vous'})|raw }}
+  </p>
+</div>

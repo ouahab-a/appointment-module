@@ -1,0 +1,271 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Appointment module.
+ */
+
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\field\Entity\FieldConfig;
+
+/**
+ * Implements hook_install().
+ */
+function appointment_install(): void
+{
+  _appointment_create_adviser_fields();
+  _appointment_create_roles();
+  _appointment_create_appointment_types();
+  // Migrations : lancer manuellement via drush migrate:import --group=appointment
+}
+
+// ---------------------------------------------------------------------------
+// CHAMPS
+// ---------------------------------------------------------------------------
+
+/**
+ * Crée tous les champs user nécessaires pour les conseillers.
+ */
+function _appointment_create_adviser_fields(): void
+{
+  _appointment_create_field(
+    field_name: 'field_adviser_agency',
+    type: 'entity_reference',
+    cardinality: 1,
+    storage_settings: ['target_type' => 'agency'],
+    label: t('Agence')
+  );
+
+  _appointment_create_field(
+    field_name: 'field_adviser_specializations',
+    type: 'entity_reference',
+    cardinality: -1,
+    storage_settings: ['target_type' => 'taxonomy_term'],
+    label: t('Spécialisations'),
+    instance_settings: [
+      'handler'          => 'default:taxonomy_term',
+      'handler_settings' => [
+        'target_bundles' => ['appointment_type' => 'appointment_type'],
+      ],
+    ]
+  );
+
+  _appointment_create_field(
+    field_name: 'field_adviser_hours',
+    type: 'string_long',
+    cardinality: 1,
+    storage_settings: [],
+    label: t('Horaires de travail')
+  );
+}
+
+/**
+ * Crée un champ storage + instance sur l'entité user si inexistant.
+ *
+ * @param string $field_name       Nom machine du champ.
+ * @param string $type             Type de champ (entity_reference, string_long...).
+ * @param int    $cardinality      Cardinalité (-1 = illimité).
+ * @param array  $storage_settings Settings du storage.
+ * @param string $label            Label affiché dans l'UI.
+ * @param array  $instance_settings Settings de l'instance (optionnel).
+ */
+function _appointment_create_field(
+  string $field_name,
+  string $type,
+  int $cardinality,
+  array $storage_settings,
+  string $label,
+  array $instance_settings = []
+): void {
+  if (!FieldStorageConfig::loadByName('user', $field_name)) {
+    FieldStorageConfig::create([
+      'field_name'  => $field_name,
+      'entity_type' => 'user',
+      'type'        => $type,
+      'settings'    => $storage_settings,
+      'cardinality' => $cardinality,
+    ])->save();
+  }
+
+  if (!FieldConfig::loadByName('user', 'user', $field_name)) {
+    $config = [
+      'field_storage' => FieldStorageConfig::loadByName('user', $field_name),
+      'bundle'        => 'user',
+      'label'         => $label,
+    ];
+
+    if (!empty($instance_settings)) {
+      $config['settings'] = $instance_settings;
+    }
+
+    FieldConfig::create($config)->save();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RÔLES & PERMISSIONS
+// ---------------------------------------------------------------------------
+
+/**
+ * Crée les rôles et assigne les permissions du module.
+ */
+function _appointment_create_roles(): void
+{
+  if (!\Drupal\user\Entity\Role::load('adviser')) {
+    \Drupal\user\Entity\Role::create([
+      'id'    => 'adviser',
+      'label' => 'Conseiller',
+    ])->save();
+  }
+
+  user_role_grant_permissions('adviser', [
+    'view appointment',
+    'access content',
+    'access appointment booking',
+  ]);
+
+  user_role_grant_permissions('authenticated', [
+    'access appointment booking',
+  ]);
+
+  user_role_grant_permissions('anonymous', [
+    'access appointment booking',
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// DONNÉES INITIALES
+// ---------------------------------------------------------------------------
+
+/**
+ * Crée les termes de taxonomie appointment_type.
+ *
+ * Les termes sont des données, pas de la config.
+ * Ils sont créés ici et non dans config/install/.
+ */
+function _appointment_create_appointment_types(): void
+{
+  $terms = [
+    'Conseil financier',
+    'Conseil carrière',
+    'Consultation juridique',
+    'Orientation éducative',
+    'Services de santé',
+    'Aide au logement',
+    'Services emploi',
+    'Services immigration',
+  ];
+
+  foreach ($terms as $name) {
+    $existing = \Drupal::entityTypeManager()
+      ->getStorage('taxonomy_term')
+      ->loadByProperties([
+        'vid'  => 'appointment_type',
+        'name' => $name,
+      ]);
+
+    if (empty($existing)) {
+      \Drupal\taxonomy\Entity\Term::create([
+        'vid'  => 'appointment_type',
+        'name' => $name,
+      ])->save();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DÉSINSTALLATION
+// ---------------------------------------------------------------------------
+
+/**
+ * Implements hook_module_preuninstall().
+ */
+function appointment_module_preuninstall(string $module, bool $is_syncing): void
+{
+  if ($module !== 'appointment') {
+    return;
+  }
+
+  // Supprimer les users adviser EN PREMIER (avant la vérification du contenu)
+  $adviser_mails = [
+    'ahmed.benali@agency.ma',
+    'fatima.idrissi@agency.ma',
+    'karim.mansouri@agency.ma',
+    'sara.alaoui@agency.ma',
+    'youssef.elamrani@agency.ma',
+  ];
+
+  $storage = \Drupal::entityTypeManager()->getStorage('user');
+
+  // Par rôle
+  $advisers = $storage->loadByProperties(['roles' => 'adviser']);
+  foreach ($advisers as $user) $user->delete();
+
+  // Par mail (filet de sécurité)
+  foreach ($adviser_mails as $mail) {
+    $users = $storage->loadByProperties(['mail' => $mail]);
+    foreach ($users as $user) $user->delete();
+  }
+
+  // Supprimer RDV et agences
+  foreach (['appointment', 'agency'] as $type) {
+    if (\Drupal::entityTypeManager()->hasDefinition($type)) {
+      $entities = \Drupal::entityTypeManager()
+        ->getStorage($type)->loadMultiple();
+      if (!empty($entities)) {
+        \Drupal::entityTypeManager()->getStorage($type)->delete($entities);
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function appointment_uninstall(): void
+{
+  // Supprimer les champs user
+  foreach (['field_adviser_agency', 'field_adviser_specializations', 'field_adviser_hours'] as $field_name) {
+    $field = FieldConfig::loadByName('user', 'user', $field_name);
+    if ($field) $field->delete();
+
+    $storage = FieldStorageConfig::loadByName('user', $field_name);
+    if ($storage) $storage->delete();
+  }
+
+  // Supprimer les users avec le rôle adviser
+  $advisers = \Drupal::entityTypeManager()
+    ->getStorage('user')
+    ->loadByProperties(['roles' => 'adviser']);
+  foreach ($advisers as $user) {
+    $user->delete();
+  }
+
+  // Supprimer le rôle adviser
+  $role = \Drupal\user\Entity\Role::load('adviser');
+  if ($role) $role->delete();
+
+  // Supprimer la config du module
+  \Drupal::configFactory()->getEditable('appointment.settings')->delete();
+
+  // Supprimer les termes et le vocabulary
+  $terms = \Drupal::entityTypeManager()
+    ->getStorage('taxonomy_term')
+    ->loadByProperties(['vid' => 'appointment_type']);
+  foreach ($terms as $term) $term->delete();
+
+  $vocab = \Drupal\taxonomy\Entity\Vocabulary::load('appointment_type');
+  if ($vocab) $vocab->delete();
+
+  // Supprimer les tables de mapping des migrations
+  foreach (['appointment_agencies', 'appointment_advisers'] as $migration_id) {
+    foreach (['migrate_map_', 'migrate_message_'] as $prefix) {
+      $table = $prefix . $migration_id;
+      if (\Drupal::database()->schema()->tableExists($table)) {
+        \Drupal::database()->schema()->dropTable($table);
+      }
+    }
+  }
+
+  \Drupal::logger('appointment')->info('Module appointment désinstallé proprement.');
+}

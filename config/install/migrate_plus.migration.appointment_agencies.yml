@@ -1,0 +1,48 @@
+langcode: fr
+status: true
+dependencies: {  }
+id: appointment_agencies
+class: null
+idMap: {  }
+field_plugin_method: null
+cck_plugin_method: null
+migration_tags: {  }
+migration_group: appointment
+label: 'Import des agences'
+source:
+  plugin: csv
+  path: modules/custom/appointment/data/agencies.csv
+  delimiter: ','
+  enclosure: '"'
+  header_row_count: 1
+  ids:
+    - id
+  column_names:
+    -
+      id: 'ID unique'
+    -
+      name: 'Nom de l agence'
+    -
+      address: Adresse
+    -
+      city: Ville
+    -
+      phone: Téléphone
+    -
+      email: Email
+    -
+      opening_hours: Horaires
+process:
+  label: name
+  status:
+    plugin: default_value
+    default_value: 1
+  address: address
+  city: city
+  phone: phone
+  email: email
+  opening_hours: opening_hours
+destination:
+  plugin: 'entity:agency'
+migration_dependencies: {  }
+include: null

@@ -1,0 +1,19 @@
+# Librairie FullCalendar CDN — chargée en premier
+fullcalendar:
+  js:
+    https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js:
+      type: external
+      minified: true
+
+# Librairie principale — dépend de FullCalendar
+appointment.booking:
+  js:
+    js/appointment.js: {}
+  css:
+    theme:
+      css/appointment.css: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings
+    - appointment/fullcalendar

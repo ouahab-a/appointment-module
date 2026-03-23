@@ -1,0 +1,18 @@
+{#
+/**
+ * @file
+ * Barre de progression du formulaire multi-étapes.
+ *
+ * Variables:
+ * - steps: Tableau d'étapes avec keys: label, class (step-done/step-active/step-pending)
+ * - current_step: Numéro de l'étape courante
+ */
+#}
+<nav class="appointment-progress" aria-label="{{ 'Progression'|t }}">
+  {% for step in steps %}
+    <div class="appointment-progress__step {{ step.class }}">
+      <span class="appointment-progress__number">{{ loop.index }}</span>
+      <span class="appointment-progress__label">{{ step.label }}</span>
+    </div>
+  {% endfor %}
+</nav>

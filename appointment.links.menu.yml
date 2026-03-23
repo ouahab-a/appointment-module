@@ -1,0 +1,39 @@
+entity.agency.settings:
+  title: 'Agency'
+  description: 'Configure an Agency entity type.'
+  route_name:  entity.agency.settings
+  parent: system.admin_structure
+
+entity.agency.collection:
+  title: 'Agencies'
+  description: 'List of agencies.'
+  route_name: entity.agency.collection
+  parent: system.admin_content
+
+entity.appointment.settings:
+  title: 'Appointment'
+  description: 'Configure an Appointment entity type.'
+  route_name:  entity.appointment.settings
+  parent: system.admin_structure
+
+entity.appointment.collection:
+  title: 'Appointments'
+  description: 'List of appointments.'
+  route_name: entity.appointment.collection
+  parent: system.admin_content
+
+# Lien principal dans /admin/config
+appointment.admin_config:
+  title: 'Rendez-vous'
+  description: 'Configuration du module de rendez-vous'
+  parent: system.admin_config_services
+  route_name: appointment_settings
+  weight: 10
+
+# Lien dans la liste des RDV admin
+appointment.admin_list:
+  title: 'Liste des rendez-vous'
+  description: 'Gérer tous les rendez-vous'
+  parent: system.admin_structure
+  route_name: appointment.admin_list
+  weight: 10

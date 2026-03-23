@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_adviser_agency
+  module:
+    - user
+id: user.user.field_adviser_agency
+field_name: field_adviser_agency
+entity_type: user
+bundle: user
+label: Agence
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:agency'
+  handler_settings: {  }
+field_type: entity_reference
