@@ -1,10 +1,11 @@
 langcode: en
 status: true
-dependencies:
-  module:
-    - appointment
-    - system
+dependencies: {}
 id: adviser
-label: Conseiller
-weight: 0
+label: Adviser
+weight: 3
 is_admin: false
+permissions:
+  - access appointment booking
+  - access content
+  - view appointment
