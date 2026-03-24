@@ -69,7 +69,6 @@ function _appointment_create_appointment_types(): void
     }
   }
 }
-
 // ---------------------------------------------------------------------------
 // DÉSINSTALLATION
 // ---------------------------------------------------------------------------
@@ -79,163 +78,17 @@ function _appointment_create_appointment_types(): void
  */
 function appointment_module_preuninstall(string $module, bool $is_syncing): void
 {
-  if ($module !== 'appointment') {
-    return;
-  }
-
-  $storage = \Drupal::entityTypeManager()->getStorage('user');
-
-  // Supprimer les advisers par rôle
-  $advisers = $storage->loadByProperties(['roles' => 'adviser']);
-  foreach ($advisers as $user) {
-    $user->delete();
-  }
-
-  // Filet de sécurité par mail
-  $adviser_mails = [
-    'ahmed.benali@agency.ma',
-    'fatima.idrissi@agency.ma',
-    'karim.mansouri@agency.ma',
-    'sara.alaoui@agency.ma',
-    'youssef.elamrani@agency.ma',
-  ];
-  foreach ($adviser_mails as $mail) {
-    $users = $storage->loadByProperties(['mail' => $mail]);
-    foreach ($users as $user) {
-      $user->delete();
-    }
-  }
-
-  // Supprimer RDV et agences
-  foreach (['appointment', 'agency'] as $type) {
-    if (\Drupal::entityTypeManager()->hasDefinition($type)) {
-      $entities = \Drupal::entityTypeManager()
-        ->getStorage($type)
-        ->loadMultiple();
-      if (!empty($entities)) {
-        \Drupal::entityTypeManager()->getStorage($type)->delete($entities);
-      }
-    }
-  }
+  // Delegate heavy logic to the uninstall service (allows DI internally).
+  \Drupal::service('appointment.uninstall')->preUninstall($module, $is_syncing);
 }
 
 /**
  * Implements hook_uninstall().
  */
-function appointment_uninstall(): void
-{
-  $entity_type_manager = \Drupal::entityTypeManager();
-  $db     = \Drupal::database();
-  $schema = $db->schema();
-
-  // -------------------------------------------------------------------------
-  // 1. Supprimer les champs user
-  //
-  //    Problème connu : si hook_install() a crashé partiellement,
-  //    les tables SQL des champs n'existent pas. Drupal fait un SELECT
-  //    pour vérifier les données avant de supprimer le FieldStorage,
-  //    ce qui provoque une erreur SQL 42S02 (table not found).
-  //
-  //    Fix : créer une table vide temporaire si elle n'existe pas,
-  //    puis supprimer proprement via l'API Drupal.
-  // -------------------------------------------------------------------------
-  $field_tables = [
-    'field_adviser_agency'          => 'user__field_adviser_agency',
-    'field_adviser_specializations' => 'user__field_adviser_specializations',
-    'field_adviser_hours'           => 'user__field_adviser_hours',
-  ];
-
-  foreach ($field_tables as $field_name => $table_name) {
-    // Créer une table fantôme vide si absente pour éviter le crash Drupal
-    if (!$schema->tableExists($table_name)) {
-      $db->query("CREATE TABLE `{$table_name}` (entity_id INT UNSIGNED NOT NULL)");
-    }
-
-    $field_instance = FieldConfig::loadByName('user', 'user', $field_name);
-    if ($field_instance) {
-      $field_instance->delete();
-    }
-
-    $field_storage = FieldStorageConfig::loadByName('user', $field_name);
-    if ($field_storage) {
-      $field_storage->delete();
-    }
-
-    // Nettoyer la table fantôme si elle est toujours là après suppression
-    if ($schema->tableExists($table_name)) {
-      $schema->dropTable($table_name);
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. Supprimer les utilisateurs avec le rôle adviser (filet de sécurité)
-  // -------------------------------------------------------------------------
-  $user_storage = $entity_type_manager->getStorage('user');
-  $advisers     = $user_storage->loadByProperties(['roles' => 'adviser']);
-  foreach ($advisers as $user) {
-    $user->delete();
-  }
-
-  // -------------------------------------------------------------------------
-  // 3. Supprimer le rôle adviser
-  //    (la config YAML sera supprimée automatiquement par Drupal,
-  //     mais on force au cas où)
-  // -------------------------------------------------------------------------
-  $role = \Drupal\user\Entity\Role::load('adviser');
-  if ($role) {
-    $role->delete();
-  }
-
-  // -------------------------------------------------------------------------
-  // 4. Supprimer les termes de taxonomie AVANT le vocabulaire
-  // -------------------------------------------------------------------------
-  $term_storage = $entity_type_manager->getStorage('taxonomy_term');
-  $terms        = $term_storage->loadByProperties(['vid' => 'appointment_type']);
-  foreach ($terms as $term) {
-    $term->delete();
-  }
-
-  // -------------------------------------------------------------------------
-  // 5. Supprimer le vocabulaire
-  // -------------------------------------------------------------------------
-  $vocab = \Drupal\taxonomy\Entity\Vocabulary::load('appointment_type');
-  if ($vocab) {
-    $vocab->delete();
-  }
-
-  // -------------------------------------------------------------------------
-  // 6. Supprimer la configuration du module
-  // -------------------------------------------------------------------------
-  \Drupal::configFactory()->getEditable('appointment.settings')->delete();
-
-  // -------------------------------------------------------------------------
-  // 7. Nettoyer les tables de migration
-  // -------------------------------------------------------------------------
-  $migrations = ['appointment_agencies', 'appointment_advisers'];
-  foreach ($migrations as $id) {
-    foreach (['migrate_map_', 'migrate_message_'] as $prefix) {
-      $table = $prefix . $id;
-      if ($schema->tableExists($table)) {
-        $schema->dropTable($table);
-      }
-    }
-  }
-
-  // -------------------------------------------------------------------------
-// 8. Supprimer les configs de migration orphelines
-//    (migrate_plus ne les supprime pas automatiquement au pmu)
-// -------------------------------------------------------------------------
-$migration_configs = [
-  'migrate_plus.migration.appointment_advisers',
-  'migrate_plus.migration.appointment_agencies',
-  'migrate_plus.migration_group.appointment',
-];
-foreach ($migration_configs as $config_name) {
-  $config = \Drupal::configFactory()->getEditable($config_name);
-  if (!$config->isNew()) {
-    $config->delete();
-  }
-}
-
-  \Drupal::logger('appointment')->info('Module appointment désinstallé proprement.');
+/**
+ * Implements hook_uninstall().
+ */
+function appointment_uninstall(): void {
+  // Delegate uninstall logic to service (DI inside service).
+  \Drupal::service('appointment.uninstall')->uninstall();
 }

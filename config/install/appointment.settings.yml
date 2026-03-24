@@ -8,3 +8,4 @@ send_reminder: false
 calendar_first_day: 1
 calendar_min_time: '08:00:00'
 calendar_max_time: '18:00:00'
+adviser_mails: []

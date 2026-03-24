@@ -10,3 +10,10 @@ services:
       - '@plugin.manager.mail'
       - '@language_manager'
       - '@entity_type.manager'
+  appointment.uninstall:
+    class: Drupal\appointment\Service\UninstallService
+    arguments:
+      - '@entity_type.manager'
+      - '@database'
+      - '@config.factory'
+      - '@logger.factory'
