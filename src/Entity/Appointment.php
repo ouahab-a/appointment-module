@@ -64,14 +64,16 @@ use Drupal\views\EntityViewsData;
   ],
   field_ui_base_route: 'entity.appointment.settings',
 )]
-class Appointment extends ContentEntityBase implements AppointmentInterface {
+class Appointment extends ContentEntityBase implements AppointmentInterface
+{
 
   use EntityChangedTrait;
 
   /**
    * {@inheritdoc}
    */
-  public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
+  public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array
+  {
 
     $fields = parent::baseFieldDefinitions($entity_type);
 
@@ -146,12 +148,12 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setLabel(t('Changed'))
       ->setDescription(t('The time that the appointment was last edited.'));
 
-    // Date et heure du rendez-vous.
+    // Date et heure du rendez-vous
     $fields['appointment_date'] = BaseFieldDefinition::create('datetime')
       ->setLabel(t('Date et heure'))
       ->setRequired(TRUE)
       ->setSetting('datetime_type', 'datetime')
-      ->setDisplayOptions('view', [
+      ->setDisplayOptions('view', [      
         'type'   => 'datetime_default',
         'weight' => 10,
         'label'  => 'above',
@@ -164,7 +166,7 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // Référence vers l'agence.
+    // Référence vers l'agence
     $fields['agency'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Agence'))
       ->setRequired(TRUE)
@@ -198,7 +200,7 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // Nom du client.
+    // Nom du client
     $fields['customer_name'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Nom complet'))
       ->setRequired(TRUE)
@@ -206,21 +208,21 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 14])
       ->setDisplayConfigurable('form', TRUE);
 
-    // Email du client.
+    // Email du client
     $fields['customer_email'] = BaseFieldDefinition::create('email')
       ->setLabel(t('Adresse e-mail'))
       ->setRequired(TRUE)
       ->setDisplayOptions('form', ['type' => 'email_default', 'weight' => 15])
       ->setDisplayConfigurable('form', TRUE);
 
-    // Téléphone du client.
+    // Téléphone du client
     $fields['customer_phone'] = BaseFieldDefinition::create('telephone')
       ->setLabel(t('Numéro de téléphone'))
       ->setRequired(TRUE)
       ->setDisplayOptions('form', ['type' => 'telephone_default', 'weight' => 16])
       ->setDisplayConfigurable('form', TRUE);
 
-    // Statut du RDV.
+    // Statut du RDV
     $fields['appointment_status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Statut'))
       ->setRequired(TRUE)
@@ -236,7 +238,7 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // Notes.
+    // Notes
     $fields['notes'] = BaseFieldDefinition::create('text_long')
       ->setLabel(t('Notes'))
       ->setDisplayOptions('form', ['type' => 'text_textarea', 'weight' => 18])
@@ -250,5 +252,4 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
 
     return $fields;
   }
-
 }

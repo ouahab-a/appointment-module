@@ -1,8 +1,8 @@
 <?php
 
+
 namespace Drupal\appointment\Form;
 
-use Drupal\Component\Utility\Html;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\TempStore\PrivateTempStoreFactory;
@@ -12,7 +12,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Formulaire multi-étapes de prise de rendez-vous.
  */
-class AppointmentBookingForm extends FormBase {
+class AppointmentBookingForm extends FormBase
+{
 
   /**
    * Nombre total d'étapes.
@@ -34,9 +35,9 @@ class AppointmentBookingForm extends FormBase {
    */
   public function __construct(
     PrivateTempStoreFactory $temp_store_factory,
-    AppointmentManager $appointment_manager,
+    AppointmentManager $appointment_manager
   ) {
-    // On crée un "bucket" privé pour ce formulaire.
+    // On crée un "bucket" privé pour ce formulaire
     $this->tempStore = $temp_store_factory->get('appointment_booking');
     $this->appointmentManager = $appointment_manager;
   }
@@ -44,7 +45,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container): static {
+  public static function create(ContainerInterface $container): static
+  {
     return new static(
       $container->get('tempstore.private'),
       $container->get('appointment.manager'),
@@ -54,31 +56,34 @@ class AppointmentBookingForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function getFormId(): string {
+  public function getFormId(): string
+  {
     return 'appointment_booking_form';
   }
 
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state): array {
+  public function buildForm(array $form, FormStateInterface $form_state): array
+  {
     // Ajout de la bibliotheque.
     $form['#attached']['library'][] = 'appointment/appointment.booking';
-    // Étape courante — 1 par défaut.
+    // Étape courante — 1 par défaut
     $step = $form_state->get('step') ?? 1;
     $form_state->set('step', $step);
 
-    // Wrapper AJAX autour du formulaire entier.
+    // Wrapper AJAX autour du formulaire entier
     $form['#prefix'] = '<div id="appointment-booking-wrapper">';
     $form['#suffix'] = '</div>';
 
-    // Indicateur de progression.
+    // Indicateur de progression
     $form['progress'] = [
       '#theme' => 'item_list',
       '#attributes' => ['class' => ['appointment-progress']],
     ];
 
-    // Construction de l'étape courante.
+
+    // Construction de l'étape courante
     $form = match ($step) {
       1 => $this->buildStep1($form, $form_state),
       2 => $this->buildStep2($form, $form_state),
@@ -89,7 +94,7 @@ class AppointmentBookingForm extends FormBase {
       default => $this->buildStep1($form, $form_state),
     };
 
-    // Boutons navigation.
+    // Boutons navigation
     $form['actions'] = ['#type' => 'actions'];
 
     if ($step > 1 && $step < 6) {
@@ -129,8 +134,9 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 1 : Choix de l'agence.
    */
-  protected function buildStep1(array $form, FormStateInterface $form_state): array {
-    // Nettoyage d'une session précédente si on revient au début.
+  protected function buildStep1(array $form, FormStateInterface $form_state): array
+  {
+    // Nettoyage d'une session précédente si on revient au début
     if ($form_state->get('step') === 1 && !$this->tempStore->get('_fresh')) {
       foreach (
         [
@@ -142,7 +148,7 @@ class AppointmentBookingForm extends FormBase {
           'customer_firstname',
           'customer_phone',
           'customer_email',
-          'reference',
+          'reference'
         ] as $key
       ) {
         $this->tempStore->delete($key);
@@ -169,7 +175,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 2 : Choix du type de rendez-vous.
    */
-  protected function buildStep2(array $form, FormStateInterface $form_state): array {
+  protected function buildStep2(array $form, FormStateInterface $form_state): array
+  {
     $form['step_title'] = [
       '#markup' => '<h2>' . $this->t('Type de rendez-vous') . '</h2>',
     ];
@@ -190,7 +197,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 3 : Choix du conseiller.
    */
-  protected function buildStep3(array $form, FormStateInterface $form_state): array {
+  protected function buildStep3(array $form, FormStateInterface $form_state): array
+  {
     $form['step_title'] = [
       '#markup' => '<h2>' . $this->t('Choisissez votre conseiller') . '</h2>',
     ];
@@ -212,28 +220,29 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 4 : Choix de la date et heure (FullCalendar).
    */
-  protected function buildStep4(array $form, FormStateInterface $form_state): array {
+  protected function buildStep4(array $form, FormStateInterface $form_state): array
+  {
     $form['step_title'] = [
-      '#markup' => '<h2>' . $this->t("Choisissez le jour et l'heure") . '</h2>',
+      '#markup' => '<h2>' . $this->t('Choisissez le jour et l\'heure') . '</h2>',
     ];
 
     $adviser_id = $this->tempStore->get('adviser_id');
 
-    // Créneaux disponibles calculés par le service.
+    // Créneaux disponibles calculés par le service
     $slots = $this->appointmentManager->getAvailableSlots($adviser_id);
 
     $form['#attached']['library'][] = 'appointment/fullcalendar';
     $form['#attached']['drupalSettings']['appointment']['slots'] = array_values($slots);
     // $form['#attached']['drupalSettings']['appointment']['slots'] = $slots;
     $form['#attached']['drupalSettings']['appointment']['adviser_id'] = $adviser_id;
-    // Champ caché rempli par le JS quand l'user clique un créneau.
+    // Champ caché rempli par le JS quand l'user clique un créneau
     $form['appointment_date'] = [
       '#type' => 'hidden',
       '#attributes' => ['id' => 'appointment-selected-date'],
       '#default_value' => $this->tempStore->get('appointment_date'),
     ];
 
-    // Conteneur pour FullCalendar.
+    // Conteneur pour FullCalendar
     $form['calendar'] = [
       '#markup' => '<div id="appointment-calendar"></div>',
     ];
@@ -244,12 +253,13 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 5 : Informations personnelles.
    */
-  protected function buildStep5(array $form, FormStateInterface $form_state): array {
+  protected function buildStep5(array $form, FormStateInterface $form_state): array
+  {
     $form['step_title'] = [
       '#markup' => '<h2>' . $this->t('Renseignez vos informations') . '</h2>',
     ];
 
-    // Résumé du RDV choisi.
+    // Résumé du RDV choisi
     $form['summary'] = [
       '#theme' => 'appointment_summary',
       '#agency_id' => $this->tempStore->get('agency_id'),
@@ -290,7 +300,7 @@ class AppointmentBookingForm extends FormBase {
 
     $form['terms'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t("En cochant cette case, j'accepte et je reconnais avoir pris connaissance des conditions générales d'utilisation."),
+      '#title' => $this->t('En cochant cette case, j\'accepte et je reconnais avoir pris connaissance des conditions générales d\'utilisation.'),
       '#required' => TRUE,
     ];
 
@@ -300,11 +310,12 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Étape 6 : Confirmation finale (lecture seule).
    */
-  protected function buildStep6(array $form, FormStateInterface $form_state): array {
-    $reference = $this->tempStore->get('reference');
-    $date_raw  = $this->tempStore->get('appointment_date');
-    $date_obj  = new \DateTime($date_raw);
-    $date_end  = clone $date_obj;
+  protected function buildStep6(array $form, FormStateInterface $form_state): array
+  {
+    $reference  = $this->tempStore->get('reference');
+    $date_raw   = $this->tempStore->get('appointment_date');
+    $date_obj   = new \DateTime($date_raw);
+    $date_end   = clone $date_obj;
     $date_end->modify('+' . (\Drupal::config('appointment.settings')->get('slot_duration') ?? 30) . ' minutes');
 
     $agency_id  = $this->tempStore->get('agency_id');
@@ -321,9 +332,9 @@ class AppointmentBookingForm extends FormBase {
       '#time'          => $date_obj->format('H\hi') . ' – ' . $date_end->format('H\hi'),
       '#agency'        => $agencies[$agency_id] ?? '—',
       '#adviser'       => $advisers[$adviser_id] ?? '—',
-      '#customer_name' => Html::escape($this->tempStore->get('customer_name')) . ' ' . Html::escape($this->tempStore->get('customer_firstname')),
-      '#customer_email' => Html::escape($this->tempStore->get('customer_email')),
-      '#customer_phone' => Html::escape($this->tempStore->get('customer_phone')),
+      '#customer_name' => \Drupal\Component\Utility\Html::escape($this->tempStore->get('customer_name')) . ' ' . \Drupal\Component\Utility\Html::escape($this->tempStore->get('customer_firstname')),
+      '#customer_email' => \Drupal\Component\Utility\Html::escape($this->tempStore->get('customer_email')),
+      '#customer_phone' => \Drupal\Component\Utility\Html::escape($this->tempStore->get('customer_phone')),
     ];
 
     return $form;
@@ -336,10 +347,11 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Passe à l'étape suivante.
    */
-  public function nextStep(array &$form, FormStateInterface $form_state): void {
+  public function nextStep(array &$form, FormStateInterface $form_state): void
+  {
     $step = $form_state->get('step');
 
-    // Sauvegarder les valeurs de l'étape courante dans TempStore.
+    // Sauvegarder les valeurs de l'étape courante dans TempStore
     $this->saveStepValues($step, $form_state);
 
     $form_state->set('step', $step + 1);
@@ -349,10 +361,11 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Revient à l'étape précédente.
    */
-  public function previousStep(array &$form, FormStateInterface $form_state): void {
+  public function previousStep(array &$form, FormStateInterface $form_state): void
+  {
     $step = $form_state->get('step');
 
-    // Effacer les valeurs des étapes suivantes pour éviter les conflits.
+    // Effacer les valeurs des étapes suivantes pour éviter les conflits
     match ($step) {
       3 => $this->tempStore->delete('adviser_id'),
       4 => $this->tempStore->delete('appointment_date'),
@@ -366,7 +379,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Sauvegarde les valeurs d'une étape dans TempStore.
    */
-  protected function saveStepValues(int $step, FormStateInterface $form_state): void {
+  protected function saveStepValues(int $step, FormStateInterface $form_state): void
+  {
     $map = [
       1 => ['agency_id'],
       2 => ['appointment_type'],
@@ -395,11 +409,12 @@ class AppointmentBookingForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function validateForm(array &$form, FormStateInterface $form_state): void {
+  public function validateForm(array &$form, FormStateInterface $form_state): void
+  {
     $step = $form_state->get('step');
     $trigger = $form_state->getTriggeringElement()['#submit'][0] ?? '';
 
-    // Pas de validation sur "Retour".
+    // Pas de validation sur "Retour"
     if ($trigger === '::previousStep') {
       return;
     }
@@ -414,7 +429,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Validation étape 4 : créneau sélectionné + anti double-booking.
    */
-  protected function validateStep4(array &$form, FormStateInterface $form_state): void {
+  protected function validateStep4(array &$form, FormStateInterface $form_state): void
+  {
     $date = $form_state->getValue('appointment_date');
 
     if (empty($date)) {
@@ -425,7 +441,7 @@ class AppointmentBookingForm extends FormBase {
       return;
     }
 
-    // Nettoyer tout suffix timezone.
+    // Nettoyer tout suffix timezone
     $date = preg_replace('/([+-]\d{2}:\d{2}|Z)$/', '', (string) $date);
     $form_state->setValue('appointment_date', $date);
 
@@ -433,7 +449,7 @@ class AppointmentBookingForm extends FormBase {
     if ($this->appointmentManager->isSlotTaken($adviser_id, $date)) {
       $form_state->setErrorByName(
         'appointment_date',
-        $this->t("Ce créneau vient d'être réservé. Veuillez en choisir un autre.")
+        $this->t('Ce créneau vient d\'être réservé. Veuillez en choisir un autre.')
       );
     }
   }
@@ -441,13 +457,14 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Validation étape 5 : format téléphone marocain.
    */
-  protected function validateStep5(array &$form, FormStateInterface $form_state): void {
+  protected function validateStep5(array &$form, FormStateInterface $form_state): void
+  {
     $phone = $form_state->getValue('customer_phone');
 
     if (!preg_match('/^(0|\+212)[567]\d{8}$/', $phone)) {
       $form_state->setErrorByName(
         'customer_phone',
-        $this->t("Le numéro de téléphone n'est pas valide (ex: 06XXXXXXXX ou +2126XXXXXXXX).")
+        $this->t('Le numéro de téléphone n\'est pas valide (ex: 06XXXXXXXX ou +2126XXXXXXXX).')
       );
     }
   }
@@ -459,11 +476,12 @@ class AppointmentBookingForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function submitForm(array &$form, FormStateInterface $form_state): void {
+  public function submitForm(array &$form, FormStateInterface $form_state): void
+  {
     // Sauvegarder les dernières valeurs (étape 5)
     $this->saveStepValues(5, $form_state);
 
-    // Créer l'entité Appointment via le service.
+    // Créer l'entité Appointment via le service
     $appointment = $this->appointmentManager->createAppointment([
       'agency_id'        => $this->tempStore->get('agency_id'),
       'adviser_id'       => $this->tempStore->get('adviser_id'),
@@ -477,11 +495,12 @@ class AppointmentBookingForm extends FormBase {
     // Stocker la référence pour buildStep6()
     $this->tempStore->set('reference', $appointment->get('reference')->value);
 
-    // Envoyer l'email de confirmation.
+    // Envoyer l'email de confirmation
     \Drupal::service('appointment.email')->sendConfirmation($appointment);
 
     // NE PAS vider le TempStore ici — buildStep6() en a besoin
-    // Le nettoyage se fait quand l'utilisateur repart vers /prendre-un-rendez-vous.
+    // Le nettoyage se fait quand l'utilisateur repart vers /prendre-un-rendez-vous
+
     // Passer à l'étape 6 (confirmation)
     $form_state->set('step', 6);
     $form_state->setRebuild(TRUE);
@@ -494,7 +513,8 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Config AJAX commune à tous les boutons.
    */
-  protected function ajaxConfig(): array {
+  protected function ajaxConfig(): array
+  {
     return [
       'wrapper' => 'appointment-booking-wrapper',
       'callback' => '::ajaxCallback',
@@ -505,14 +525,16 @@ class AppointmentBookingForm extends FormBase {
   /**
    * Callback AJAX — retourne le formulaire entier.
    */
-  public function ajaxCallback(array &$form, FormStateInterface $form_state): array {
+  public function ajaxCallback(array &$form, FormStateInterface $form_state): array
+  {
     return $form;
   }
 
   /**
    * Construit les items de la barre de progression.
    */
-  protected function buildProgressItems(int $current_step): array {
+  protected function buildProgressItems(int $current_step): array
+  {
     $labels = [
       1 => $this->t('Agence'),
       2 => $this->t('Type'),
@@ -524,7 +546,7 @@ class AppointmentBookingForm extends FormBase {
 
     $html = '<nav class="appointment-progress"><ul>';
     foreach ($labels as $step => $label) {
-      $class = match (TRUE) {
+      $class = match (true) {
         $step < $current_step  => 'step-done',
         $step === $current_step => 'step-active',
         default                => 'step-pending',
@@ -535,5 +557,4 @@ class AppointmentBookingForm extends FormBase {
 
     return [['#markup' => $html]];
   }
-
 }

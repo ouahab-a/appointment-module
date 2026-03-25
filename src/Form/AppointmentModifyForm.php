@@ -2,7 +2,6 @@
 
 namespace Drupal\appointment\Form;
 
-use Drupal\Component\Utility\Html;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\appointment\Service\AppointmentManager;
@@ -16,7 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   1 → Saisie numéro de téléphone
  *   2 → Liste des RDV trouvés
  *   3 → Choix nouvelle date (FullCalendar)
- *   4 → Confirmation modification.
+ *   4 → Confirmation modification
  */
 class AppointmentModifyForm extends FormBase {
 
@@ -70,7 +69,7 @@ class AppointmentModifyForm extends FormBase {
     $step = $form_state->get('step') ?? 1;
     $form_state->set('step', $step);
 
-    $form = match ($step) {
+    $form = match($step) {
       1 => $this->buildStep1($form, $form_state),
       2 => $this->buildStep2($form, $form_state),
       3 => $this->buildStep3($form, $form_state),
@@ -121,13 +120,13 @@ class AppointmentModifyForm extends FormBase {
     ];
 
     foreach ($appointments as $appointment) {
-      $id       = $appointment->id();
-      $ref      = $appointment->get('reference')->value;
-      $date     = new \DateTime($appointment->get('appointment_date')->value);
+      $id      = $appointment->id();
+      $ref     = $appointment->get('reference')->value;
+      $date    = new \DateTime($appointment->get('appointment_date')->value);
       $date_end = clone $date;
       $date_end->modify('+30 minutes');
 
-      $agency = $this->appointmentManager->getAgencies()[$appointment->get('agency')->target_id] ?? '—';
+      $agency  = $this->appointmentManager->getAgencies()[$appointment->get('agency')->target_id] ?? '—';
       $adviser_id = $appointment->get('adviser')->target_id;
       $adviser_user = \Drupal::entityTypeManager()->getStorage('user')->load($adviser_id);
       $adviser = $adviser_user ? $adviser_user->getDisplayName() : '—';
@@ -141,12 +140,12 @@ class AppointmentModifyForm extends FormBase {
           <div class="appointment-item">
             <div class="appointment-item-info">
               <strong>' . $this->t('Rendez-vous le @date à @time', [
-          '@date' => $date->format('d/m/Y'),
-          '@time' => $date->format('H\hi'),
-        ]) . '</strong><br>
-              ' . $this->t('Avec') . ' <em>' . Html::escape($adviser) . '</em><br>
-              ' . $this->t('Agence de rendez-vous :') . ' ' . Html::escape($agency) . '<br>
-              ' . $this->t('Type de rendez-vous :') . ' ' . Html::escape($type) . '
+                '@date' => $date->format('d/m/Y'),
+                '@time' => $date->format('H\hi'),
+              ]) . '</strong><br>
+              ' . $this->t('Avec') . ' <em>' . \Drupal\Component\Utility\Html::escape($adviser) . '</em><br>
+              ' . $this->t('Agence de rendez-vous :') . ' ' . \Drupal\Component\Utility\Html::escape($agency) . '<br>
+              ' . $this->t('Type de rendez-vous :') . ' ' . \Drupal\Component\Utility\Html::escape($type) . '
             </div>
             <div class="appointment-item-actions">
               <a href="#" class="btn-modify" data-id="' . $id . '">' . $this->t('Modifier') . '</a>
@@ -156,7 +155,7 @@ class AppointmentModifyForm extends FormBase {
         ',
       ];
 
-      // Boutons cachés déclenchés par les liens JS.
+      // Boutons cachés déclenchés par les liens JS
       $form['actions']['modify_' . $id] = [
         '#type'                    => 'submit',
         '#value'                   => 'modify_' . $id,
@@ -196,7 +195,7 @@ class AppointmentModifyForm extends FormBase {
 
     $slots = $this->appointmentManager->getAvailableSlots($adviser_id);
 
-    $form['#attached']['library'][]                                   = 'appointment/fullcalendar';
+    $form['#attached']['library'][]                           = 'appointment/fullcalendar';
     $form['#attached']['drupalSettings']['appointment']['slots']      = $slots;
     $form['#attached']['drupalSettings']['appointment']['adviser_id'] = $adviser_id;
 
@@ -244,10 +243,10 @@ class AppointmentModifyForm extends FormBase {
           <div class="confirmation-icon">✓</div>
           <h2>' . $this->t('Votre rendez-vous a bien été modifié') . '</h2>
           <p>' . $this->t('Nouvelle date : <strong>@date</strong> de <strong>@start</strong> à <strong>@end</strong>', [
-        '@date'  => $date_obj->format('d/m/Y'),
-        '@start' => $date_obj->format('H\hi'),
-        '@end'   => $date_end->format('H\hi'),
-      ]) . '</p>
+            '@date'  => $date_obj->format('d/m/Y'),
+            '@start' => $date_obj->format('H\hi'),
+            '@end'   => $date_end->format('H\hi'),
+          ]) . '</p>
           <a href="/prendre-un-rendez-vous">' . $this->t('Prendre un nouveau rendez-vous') . '</a>
         </div>
       ',
@@ -267,7 +266,7 @@ class AppointmentModifyForm extends FormBase {
     $step    = $form_state->get('step');
     $trigger = $form_state->getTriggeringElement()['#name'] ?? '';
 
-    // Validation étape 1 : téléphone + RDV existant.
+    // Validation étape 1 : téléphone + RDV existant
     if ($step === 1) {
       $phone        = $form_state->getValue('phone');
       $appointments = $this->appointmentManager->findByPhone($phone);
@@ -278,12 +277,12 @@ class AppointmentModifyForm extends FormBase {
         );
         return;
       }
-      // Stocker pour buildStep2.
+      // Stocker pour buildStep2
       $form_state->set('appointments', $appointments);
     }
 
-    // Validation étape 3 : créneau sélectionné.
-    if ($step === 3 && str_starts_with($trigger, 'next') === FALSE) {
+    // Validation étape 3 : créneau sélectionné
+    if ($step === 3 && str_starts_with($trigger, 'next') === false) {
       return;
     }
     if ($step === 3) {
@@ -300,31 +299,31 @@ class AppointmentModifyForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    $appointments = $form_state->get('appointments');
-    if ($appointments) {
-      $storage = $form_state->getStorage();
-      $storage['phone'] = $form_state->getValue('phone');
-      $form_state->setStorage($storage);
-      $form_state->set('step', 2);
-      $form_state->setRebuild(TRUE);
-    }
+  $appointments = $form_state->get('appointments');
+  if ($appointments) {
+    $storage = $form_state->getStorage();
+    $storage['phone'] = $form_state->getValue('phone');
+    $form_state->setStorage($storage);
+    $form_state->set('step', 2);
+    $form_state->setRebuild(TRUE);
   }
+}
 
   /**
    * Aller vers la modification d'un RDV spécifique.
    */
   public function goToModify(array &$form, FormStateInterface $form_state): void {
-    $trigger = $form_state->getTriggeringElement();
-    $id      = str_replace('modify_', '', $trigger['#name']);
+  $trigger = $form_state->getTriggeringElement();
+  $id      = str_replace('modify_', '', $trigger['#name']);
 
-    $storage = $form_state->getStorage();
-    $storage['selected_appointment_id'] = (int) $id;
-    $form_state->setStorage($storage);
+  $storage = $form_state->getStorage();
+  $storage['selected_appointment_id'] = (int) $id;
+  $form_state->setStorage($storage);
 
-    $form_state->set('selected_appointment_id', (int) $id);
-    $form_state->set('step', 3);
-    $form_state->setRebuild(TRUE);
-  }
+  $form_state->set('selected_appointment_id', (int) $id);
+  $form_state->set('step', 3);
+  $form_state->setRebuild(TRUE);
+}
 
   /**
    * Annuler (soft delete) un RDV.
@@ -351,7 +350,7 @@ class AppointmentModifyForm extends FormBase {
       );
     }
 
-    // Revenir à l'étape 1.
+    // Revenir à l'étape 1
     $form_state->set('step', 1);
     $form_state->setRebuild(TRUE);
   }
@@ -360,17 +359,17 @@ class AppointmentModifyForm extends FormBase {
    * Retour à la liste des RDV (étape 2).
    */
   public function backToList(array &$form, FormStateInterface $form_state): void {
-    $storage = $form_state->getStorage();
-    $phone   = $storage['phone'] ?? NULL;
+  $storage = $form_state->getStorage();
+  $phone   = $storage['phone'] ?? NULL;
 
-    if ($phone) {
-      $appointments = $this->appointmentManager->findByPhone($phone);
-      $form_state->set('appointments', $appointments);
-    }
-
-    $form_state->set('step', 2);
-    $form_state->setRebuild(TRUE);
+  if ($phone) {
+    $appointments = $this->appointmentManager->findByPhone($phone);
+    $form_state->set('appointments', $appointments);
   }
+
+  $form_state->set('step', 2);
+  $form_state->setRebuild(TRUE);
+}
 
   /**
    * Valider le nouveau créneau et sauvegarder.
