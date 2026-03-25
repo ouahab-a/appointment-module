@@ -484,16 +484,25 @@ class AppointmentBookingForm extends FormBase {
     // Sauvegarder les dernières valeurs (étape 5)
     $this->saveStepValues(5, $form_state);
 
-    // Créer l'entité Appointment via le service.
-    $appointment = $this->appointmentManager->createAppointment([
-      'agency_id'        => $this->tempStore->get('agency_id'),
-      'adviser_id'       => $this->tempStore->get('adviser_id'),
-      'appointment_type' => $this->tempStore->get('appointment_type'),
-      'appointment_date' => $this->tempStore->get('appointment_date'),
-      'customer_name'    => $this->tempStore->get('customer_name') . ' ' . $this->tempStore->get('customer_firstname'),
-      'customer_phone'   => $this->tempStore->get('customer_phone'),
-      'customer_email'   => $this->tempStore->get('customer_email'),
-    ]);
+    // Créer l'entité Appointment via le service (atomique anti double-booking).
+    try {
+      $appointment = $this->appointmentManager->createAppointmentAtomic([
+        'agency_id'        => $this->tempStore->get('agency_id'),
+        'adviser_id'       => $this->tempStore->get('adviser_id'),
+        'appointment_type' => $this->tempStore->get('appointment_type'),
+        'appointment_date' => $this->tempStore->get('appointment_date'),
+        'customer_name'    => $this->tempStore->get('customer_name') . ' ' . $this->tempStore->get('customer_firstname'),
+        'customer_phone'   => $this->tempStore->get('customer_phone'),
+        'customer_email'   => $this->tempStore->get('customer_email'),
+      ]);
+    }
+    catch (\RuntimeException $e) {
+      // Cas typique : créneau pris entre l'étape 4 et la confirmation.
+      $this->messenger()->addError($e->getMessage());
+      $form_state->set('step', 4);
+      $form_state->setRebuild(TRUE);
+      return;
+    }
 
     // Stocker la référence pour buildStep6()
     $this->tempStore->set('reference', $appointment->get('reference')->value);

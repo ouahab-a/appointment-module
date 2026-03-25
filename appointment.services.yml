@@ -4,6 +4,7 @@ services:
     arguments:
       - '@entity_type.manager'
       - '@config.factory'
+      - '@lock'
 
   appointment.email:
     class: Drupal\appointment\Service\EmailService

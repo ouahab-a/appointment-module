@@ -3,6 +3,7 @@
 namespace Drupal\appointment\Form;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -35,9 +36,12 @@ class AppointmentSettingsForm extends ConfigFormBase {
    */
   public function __construct(
     ConfigFactoryInterface $config_factory,
+    // <--- 2. Ajouter ici
+    TypedConfigManagerInterface $typed_config_manager,
     LoggerChannelFactoryInterface $logger_factory,
   ) {
-    parent::__construct($config_factory);
+    // On passe les DEUX arguments au parent.
+    parent::__construct($config_factory, $typed_config_manager);
     $this->loggerFactory = $logger_factory;
   }
 
@@ -47,6 +51,8 @@ class AppointmentSettingsForm extends ConfigFormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
+    // <--- 3. Aller chercher le service 'config.typed'
+      $container->get('config.typed'),
       $container->get('logger.factory')
     );
   }

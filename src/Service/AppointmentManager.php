@@ -6,6 +6,7 @@ use Drupal\appointment\Entity\Appointment;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 
 /**
  * Service central de gestion des rendez-vous.
@@ -25,11 +26,21 @@ class AppointmentManager {
   protected $configFactory;
 
   /**
+   * @var \Drupal\Core\Lock\LockBackendInterface
+   */
+  protected LockBackendInterface $lock;
+
+  /**
    * {@inheritdoc}
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory) {
+  public function __construct(
+    EntityTypeManagerInterface $entity_type_manager,
+    ConfigFactoryInterface $config_factory,
+    LockBackendInterface $lock,
+  ) {
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
+    $this->lock = $lock;
   }
 
   // ---------------------------------------------------------------------------
@@ -257,6 +268,50 @@ class AppointmentManager {
 
     $appointment->save();
     return $appointment;
+  }
+
+  /**
+   * Crée un rendez-vous de façon atomique (anti double-booking).
+   *
+   * Idée : on prend un lock applicatif sur (adviser_id + appointment_date),
+   * on re-vérifie en base dans le lock, puis on crée.
+   *
+   * @param array $data
+   *   Données collectées par le formulaire.
+   *
+   * @return \Drupal\appointment\Entity\Appointment
+   *
+   * @throws \RuntimeException
+   *   Si le créneau est déjà réservé ou si le lock est indisponible.
+   */
+  public function createAppointmentAtomic(array $data): Appointment {
+    $adviser_id = (int) ($data['adviser_id'] ?? 0);
+    $date = (string) ($data['appointment_date'] ?? '');
+
+    if ($adviser_id <= 0 || $date === '') {
+      throw new \RuntimeException('Données invalides pour la création du rendez-vous.');
+    }
+
+    // Clé de lock stable et courte.
+    $lock_key = sprintf('appointment_slot:%d:%s', $adviser_id, sha1($date));
+
+    // Timeout de lock (secondes). Assez court pour éviter d'empoisonner l'UX.
+    $timeout = 5.0;
+
+    if (!$this->lock->acquire($lock_key, $timeout)) {
+      throw new \RuntimeException("Le créneau est en cours de réservation. Veuillez réessayer.");
+    }
+
+    try {
+      if ($this->isSlotTaken($adviser_id, $date)) {
+        throw new \RuntimeException("Ce créneau vient d'être réservé. Veuillez en choisir un autre.");
+      }
+
+      return $this->createAppointment($data);
+    }
+    finally {
+      $this->lock->release($lock_key);
+    }
   }
 
   /**
