@@ -5,13 +5,12 @@ namespace Drupal\appointment\Service;
 use Drupal\appointment\Entity\Appointment;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 
 /**
  * Service central de gestion des rendez-vous.
  */
-class AppointmentManager
-{
+class AppointmentManager {
 
   use StringTranslationTrait;
 
@@ -21,21 +20,16 @@ class AppointmentManager
   protected $entityTypeManager;
 
   /**
-   * {@inheritdoc}
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager)
-  {
-    $this->entityTypeManager = $entity_type_manager;
-  }
+  protected $configFactory;
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container): static
-  {
-    return new static(
-      $container->get('entity_type.manager'),
-    );
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory) {
+    $this->entityTypeManager = $entity_type_manager;
+    $this->configFactory = $config_factory;
   }
 
   // ---------------------------------------------------------------------------
@@ -45,8 +39,7 @@ class AppointmentManager
   /**
    * Retourne toutes les agences actives sous forme [id => label].
    */
-  public function getAgencies(): array
-  {
+  public function getAgencies(): array {
     $agencies = $this->entityTypeManager
       ->getStorage('agency')
       ->loadByProperties(['status' => 1]);
@@ -61,8 +54,7 @@ class AppointmentManager
   /**
    * Retourne les types de rendez-vous (taxonomy) sous forme [id => label].
    */
-  public function getAppointmentTypes(): array
-  {
+  public function getAppointmentTypes(): array {
     $terms = $this->entityTypeManager
       ->getStorage('taxonomy_term')
       ->loadByProperties(['vid' => 'appointment_type', 'status' => 1]);
@@ -77,14 +69,15 @@ class AppointmentManager
   /**
    * Retourne les conseillers d'une agence ayant une spécialisation donnée.
    *
-   * @param int $agency_id ID de l'agence sélectionnée.
-   * @param int $type_id   ID du terme de taxonomie (type de RDV).
+   * @param int $agency_id
+   *   ID de l'agence sélectionnée.
+   * @param int $type_id
+   *   ID du terme de taxonomie (type de RDV).
    *
    * @return array [uid => nom complet]
    */
-  public function getAdvisersByAgencyAndType(int $agency_id, int $type_id): array
-  {
-    // Charger les users avec le rôle adviser liés à cette agence
+  public function getAdvisersByAgencyAndType(int $agency_id, int $type_id): array {
+    // Charger les users avec le rôle adviser liés à cette agence.
     $users = $this->entityTypeManager
       ->getStorage('user')
       ->loadByProperties([
@@ -95,7 +88,7 @@ class AppointmentManager
 
     $options = [];
     foreach ($users as $user) {
-      // Vérifier que le conseiller a cette spécialisation
+      // Vérifier que le conseiller a cette spécialisation.
       $spec_ids = array_column(
         $user->get('field_adviser_specializations')->getValue(),
         'target_id'
@@ -118,12 +111,12 @@ class AppointmentManager
    * Lit les horaires JSON du conseiller, génère des slots de 30 min,
    * retire les slots déjà réservés.
    *
-   * @param int $adviser_id UID du conseiller.
+   * @param int $adviser_id
+   *   UID du conseiller.
    *
    * @return array Tableau de créneaux [['start' => '...', 'end' => '...', 'title' => '...']]
    */
-  public function getAvailableSlots(int $adviser_id): array
-  {
+  public function getAvailableSlots(int $adviser_id): array {
     $user = $this->entityTypeManager
       ->getStorage('user')
       ->load($adviser_id);
@@ -132,8 +125,8 @@ class AppointmentManager
       return [];
     }
 
-    // Lire la config au lieu de hardcoder
-    $config         = \Drupal::config('appointment.settings');
+    // Lire la config au lieu de hardcoder.
+    $config         = $this->configFactory->get('appointment.settings');
     $slot_duration  = (int) ($config->get('slot_duration') ?? 30);
     $booking_window = (int) ($config->get('booking_window') ?? 14);
     $min_notice     = (int) ($config->get('min_notice') ?? 2);
@@ -156,7 +149,7 @@ class AppointmentManager
         $slot_end   = new \DateTime($current->format('Y-m-d') . ' ' . $end_time);
 
         while ($slot_start < $slot_end) {
-          // Respecter le délai minimum de réservation
+          // Respecter le délai minimum de réservation.
           if ($slot_start > $min_start) {
             $slot_finish = clone $slot_start;
             $slot_finish->modify('+' . $slot_duration . ' minutes');
@@ -179,13 +172,14 @@ class AppointmentManager
   /**
    * Retire les créneaux déjà réservés pour ce conseiller.
    *
-   * @param array $slots      Tous les créneaux générés.
-   * @param int   $adviser_id UID du conseiller.
+   * @param array $slots
+   *   Tous les créneaux générés.
+   * @param int $adviser_id
+   *   UID du conseiller.
    *
    * @return array Créneaux disponibles uniquement.
    */
-  protected function filterBookedSlots(array $slots, int $adviser_id): array
-  {
+  protected function filterBookedSlots(array $slots, int $adviser_id): array {
     $booked = $this->entityTypeManager
       ->getStorage('appointment')
       ->loadByProperties([
@@ -198,7 +192,7 @@ class AppointmentManager
       $booked_dates[] = $appointment->get('appointment_date')->value;
     }
 
-    // Marquer les créneaux réservés au lieu de les supprimer
+    // Marquer les créneaux réservés au lieu de les supprimer.
     return array_map(function ($slot) use ($booked_dates) {
       $slot['available'] = !in_array($slot['start'], $booked_dates);
       return $slot;
@@ -212,13 +206,14 @@ class AppointmentManager
   /**
    * Vérifie si un créneau est déjà pris (anti double-booking).
    *
-   * @param int    $adviser_id UID du conseiller.
-   * @param string $date       Date au format Y-m-d\TH:i:s.
+   * @param int $adviser_id
+   *   UID du conseiller.
+   * @param string $date
+   *   Date au format Y-m-d\TH:i:s.
    *
    * @return bool TRUE si le créneau est pris.
    */
-  public function isSlotTaken(int $adviser_id, string $date): bool
-  {
+  public function isSlotTaken(int $adviser_id, string $date): bool {
     $existing = $this->entityTypeManager
       ->getStorage('appointment')
       ->loadByProperties([
@@ -237,13 +232,13 @@ class AppointmentManager
   /**
    * Crée et sauvegarde une entité Appointment.
    *
-   * @param array $data Données collectées par le formulaire.
+   * @param array $data
+   *   Données collectées par le formulaire.
    *
    * @return \Drupal\appointment\Entity\Appointment L'entité créée.
    */
-  public function createAppointment(array $data): Appointment
-  {
-    // Générer une référence unique : RDV-2024-XXXXX
+  public function createAppointment(array $data): Appointment {
+    // Générer une référence unique : RDV-2024-XXXXX.
     $reference = $this->generateReference();
 
     $appointment = Appointment::create([
@@ -269,11 +264,10 @@ class AppointmentManager
    *
    * @return string Ex: RDV-2024-00042
    */
-  protected function generateReference(): string
-  {
+  protected function generateReference(): string {
     $year = date('Y');
 
-    // Compter les RDV existants cette année pour incrémenter
+    // Compter les RDV existants cette année pour incrémenter.
     $count = $this->entityTypeManager
       ->getStorage('appointment')
       ->getQuery()
@@ -291,12 +285,12 @@ class AppointmentManager
   /**
    * Trouve un rendez-vous par numéro de téléphone.
    *
-   * @param string $phone Numéro de téléphone du client.
+   * @param string $phone
+   *   Numéro de téléphone du client.
    *
    * @return array Tableau d'entités Appointment.
    */
-  public function findByPhone(string $phone): array
-  {
+  public function findByPhone(string $phone): array {
     return $this->entityTypeManager
       ->getStorage('appointment')
       ->loadByProperties([
@@ -308,10 +302,10 @@ class AppointmentManager
   /**
    * Annule un rendez-vous (soft delete = statut cancelled).
    *
-   * @param int $appointment_id ID de l'entité Appointment.
+   * @param int $appointment_id
+   *   ID de l'entité Appointment.
    */
-  public function cancelAppointment(int $appointment_id): void
-  {
+  public function cancelAppointment(int $appointment_id): void {
     $appointment = $this->entityTypeManager
       ->getStorage('appointment')
       ->load($appointment_id);
@@ -321,4 +315,5 @@ class AppointmentManager
       $appointment->save();
     }
   }
+
 }

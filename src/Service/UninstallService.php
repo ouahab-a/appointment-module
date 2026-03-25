@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\appointment\Service;
 
+use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\user\Entity\Role;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -11,8 +13,10 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
 
-class UninstallService
-{
+/**
+ *
+ */
+class UninstallService {
   protected EntityTypeManagerInterface $entityTypeManager;
   protected Connection $database;
   protected ConfigFactoryInterface $configFactory;
@@ -25,15 +29,17 @@ class UninstallService
     $this->logger = $logger;
   }
 
-  public function preUninstall(string $module, bool $is_syncing): void
-  {
+  /**
+   *
+   */
+  public function preUninstall(string $module, bool $is_syncing): void {
     if ($module !== 'appointment') {
       return;
     }
 
     $storage = $this->entityTypeManager->getStorage('user');
 
-    // Supprimer les advisers par rôle
+    // Supprimer les advisers par rôle.
     $advisers = $storage->loadByProperties(['roles' => 'adviser']);
     foreach ($advisers as $user) {
       $user->delete();
@@ -49,7 +55,7 @@ class UninstallService
       }
     }
 
-    // Supprimer RDV et agences
+    // Supprimer RDV et agences.
     foreach (['appointment', 'agency'] as $type) {
       if ($this->entityTypeManager->hasDefinition($type)) {
         $entities = $this->entityTypeManager->getStorage($type)->loadMultiple();
@@ -60,11 +66,13 @@ class UninstallService
     }
   }
 
-  public function uninstall(): void
-  {
+  /**
+   *
+   */
+  public function uninstall(): void {
     $entity_type_manager = $this->entityTypeManager;
-    $db     = $this->database;
-    $schema = $db->schema();
+    $db                  = $this->database;
+    $schema              = $db->schema();
 
     $field_tables = [
       'field_adviser_agency'          => 'user__field_adviser_agency',
@@ -92,36 +100,36 @@ class UninstallService
       }
     }
 
-    // Supprimer les utilisateurs avec le rôle adviser
+    // Supprimer les utilisateurs avec le rôle adviser.
     $user_storage = $entity_type_manager->getStorage('user');
     $advisers     = $user_storage->loadByProperties(['roles' => 'adviser']);
     foreach ($advisers as $user) {
       $user->delete();
     }
 
-    // Supprimer le rôle adviser
-    $role = \Drupal\user\Entity\Role::load('adviser');
+    // Supprimer le rôle adviser.
+    $role = Role::load('adviser');
     if ($role) {
       $role->delete();
     }
 
-    // Supprimer termes de taxonomie
+    // Supprimer termes de taxonomie.
     $term_storage = $entity_type_manager->getStorage('taxonomy_term');
     $terms        = $term_storage->loadByProperties(['vid' => 'appointment_type']);
     foreach ($terms as $term) {
       $term->delete();
     }
 
-    // Supprimer le vocabulaire
-    $vocab = \Drupal\taxonomy\Entity\Vocabulary::load('appointment_type');
+    // Supprimer le vocabulaire.
+    $vocab = Vocabulary::load('appointment_type');
     if ($vocab) {
       $vocab->delete();
     }
 
-    // Supprimer la configuration du module
+    // Supprimer la configuration du module.
     $this->configFactory->getEditable('appointment.settings')->delete();
 
-    // Nettoyer les tables de migration
+    // Nettoyer les tables de migration.
     $migrations = ['appointment_agencies', 'appointment_advisers'];
     foreach ($migrations as $id) {
       foreach (['migrate_map_', 'migrate_message_'] as $prefix) {
@@ -132,7 +140,7 @@ class UninstallService
       }
     }
 
-    // Supprimer les configs de migration orphelines
+    // Supprimer les configs de migration orphelines.
     $migration_configs = [
       'migrate_plus.migration.appointment_advisers',
       'migrate_plus.migration.appointment_agencies',
@@ -147,4 +155,5 @@ class UninstallService
 
     $this->logger->get('appointment')->info('Module appointment désinstallé proprement.');
   }
+
 }

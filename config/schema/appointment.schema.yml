@@ -32,3 +32,9 @@ appointment.settings:
     calendar_max_time:
       type: string
       label: 'Calendar end time'
+    adviser_mails:
+      type: sequence
+      label: 'Adviser emails for cleanup on uninstall'
+      sequence:
+        type: email
+        label: 'Email'

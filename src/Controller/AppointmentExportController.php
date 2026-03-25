@@ -25,10 +25,10 @@ class AppointmentExportController extends ControllerBase {
     $response = new StreamedResponse(function () {
       $handle = fopen('php://output', 'w');
 
-      // BOM UTF-8 pour que Excel ouvre correctement le fichier
+      // BOM UTF-8 pour que Excel ouvre correctement le fichier.
       fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-      // En-têtes CSV
+      // En-têtes CSV.
       fputcsv($handle, [
         'Référence',
         'Date',
@@ -45,7 +45,7 @@ class AppointmentExportController extends ControllerBase {
       $offset     = 0;
 
       do {
-        // Charger 100 RDV à la fois
+        // Charger 100 RDV à la fois.
         $ids = $this->entityTypeManager()
           ->getStorage('appointment')
           ->getQuery()
@@ -63,7 +63,7 @@ class AppointmentExportController extends ControllerBase {
           ->loadMultiple($ids);
 
         foreach ($appointments as $appointment) {
-          // Formater la date
+          // Formater la date.
           $date_raw = $appointment->get('appointment_date')->value;
           $date     = '';
           if ($date_raw) {
@@ -75,7 +75,7 @@ class AppointmentExportController extends ControllerBase {
             }
           }
 
-          // Charger les labels des entités liées
+          // Charger les labels des entités liées.
           $agency_id  = $appointment->get('agency')->target_id;
           $adviser_id = $appointment->get('adviser')->target_id;
           $type_id    = $appointment->get('appointment_type')->target_id;
@@ -101,7 +101,7 @@ class AppointmentExportController extends ControllerBase {
             $type = $type_entity ? $type_entity->label() : '';
           }
 
-          // Traduire le statut
+          // Traduire le statut.
           $statuses = [
             'pending'   => 'En attente',
             'confirmed' => 'Confirmé',
@@ -122,14 +122,14 @@ class AppointmentExportController extends ControllerBase {
           ], ';');
         }
 
-        // Libérer la mémoire après chaque batch
+        // Libérer la mémoire après chaque batch.
         unset($appointments);
         $this->entityTypeManager()->getStorage('appointment')->resetCache();
         $this->entityTypeManager()->getStorage('agency')->resetCache();
         $this->entityTypeManager()->getStorage('user')->resetCache();
         $this->entityTypeManager()->getStorage('taxonomy_term')->resetCache();
 
-        // Envoyer les données au navigateur immédiatement
+        // Envoyer les données au navigateur immédiatement.
         flush();
 
         $offset += $batch_size;
@@ -139,7 +139,7 @@ class AppointmentExportController extends ControllerBase {
       fclose($handle);
     });
 
-    // Headers HTTP pour le téléchargement
+    // Headers HTTP pour le téléchargement.
     $filename = 'rendez-vous-' . date('Y-m-d') . '.csv';
     $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
     $response->headers->set(

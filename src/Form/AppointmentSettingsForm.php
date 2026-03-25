@@ -2,8 +2,11 @@
 
 namespace Drupal\appointment\Form;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Formulaire de configuration du module appointment.
@@ -19,6 +22,34 @@ class AppointmentSettingsForm extends ConfigFormBase {
    * Nom de l'objet de configuration.
    */
   const CONFIG_NAME = 'appointment.settings';
+
+  /**
+   * Le service factory pour les logs.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $loggerFactory;
+
+  /**
+   * Constructeur de la classe.
+   */
+  public function __construct(
+    ConfigFactoryInterface $config_factory,
+    LoggerChannelFactoryInterface $logger_factory,
+  ) {
+    parent::__construct($config_factory);
+    $this->loggerFactory = $logger_factory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('logger.factory')
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -54,7 +85,7 @@ class AppointmentSettingsForm extends ConfigFormBase {
 
     $form['slots']['slot_duration'] = [
       '#type'          => 'select',
-      '#title'         => $this->t('Durée d\'un créneau'),
+      '#title'         => $this->t("Durée d'un créneau"),
       '#options'       => [
         15 => $this->t('15 minutes'),
         30 => $this->t('30 minutes'),
@@ -94,14 +125,14 @@ class AppointmentSettingsForm extends ConfigFormBase {
 
     $form['email']['sender_name'] = [
       '#type'          => 'textfield',
-      '#title'         => $this->t('Nom de l\'expéditeur'),
+      '#title'         => $this->t("Nom de l'expéditeur"),
       '#default_value' => $config->get('sender_name') ?? 'Service Rendez-vous',
       '#required'      => TRUE,
     ];
 
     $form['email']['sender_email'] = [
       '#type'          => 'email',
-      '#title'         => $this->t('Email de l\'expéditeur'),
+      '#title'         => $this->t("Email de l'expéditeur"),
       '#default_value' => $config->get('sender_email') ?? 'noreply@example.com',
       '#required'      => TRUE,
     ];
@@ -123,7 +154,7 @@ class AppointmentSettingsForm extends ConfigFormBase {
     // -------------------------------------------------------------------------
     $form['display'] = [
       '#type'  => 'details',
-      '#title' => $this->t('Paramètres d\'affichage'),
+      '#title' => $this->t("Paramètres d'affichage"),
       '#open'  => FALSE,
     ];
 
@@ -154,6 +185,26 @@ class AppointmentSettingsForm extends ConfigFormBase {
       '#size'          => 10,
     ];
 
+    // -------------------------------------------------------------------------
+    // Désinstallation
+    // -------------------------------------------------------------------------
+    $form['uninstall'] = [
+      '#type'  => 'details',
+      '#title' => $this->t('Désinstallation'),
+      '#open'  => FALSE,
+    ];
+
+    $form['uninstall']['adviser_mails'] = [
+      '#type'          => 'textarea',
+      '#title'         => $this->t('Emails des conseillers de démonstration'),
+      '#description'   => $this->t(
+    'Un email par ligne. Ces comptes seront supprimés lors de la désinstallation du module.'
+    ),
+      '#default_value' => implode("\n", $config->get('adviser_mails') ?? []),
+      '#rows'          => 6,
+      '#placeholder'   => "ahmed.benali@agency.ma\nfatima.idrissi@agency.ma",
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -163,7 +214,7 @@ class AppointmentSettingsForm extends ConfigFormBase {
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     parent::validateForm($form, $form_state);
 
-    // Valider le format HH:MM:SS
+    // Valider le format HH:MM:SS.
     $time_regex = '/^\d{2}:\d{2}:\d{2}$/';
     foreach (['calendar_min_time', 'calendar_max_time'] as $field) {
       $value = $form_state->getValue($field);
@@ -174,12 +225,12 @@ class AppointmentSettingsForm extends ConfigFormBase {
       }
     }
 
-    // Valider min < max
+    // Valider min < max.
     $min = $form_state->getValue('calendar_min_time');
     $max = $form_state->getValue('calendar_max_time');
     if ($min >= $max) {
       $form_state->setErrorByName('calendar_max_time',
-        $this->t('L\'heure de fin doit être après l\'heure de début.')
+        $this->t("L'heure de fin doit être après l'heure de début.")
       );
     }
   }
@@ -188,23 +239,31 @@ class AppointmentSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    // Sauvegarder dans le système de config Drupal
+    // Sauvegarder dans le système de config Drupal.
+    // Convertir le textarea en tableau d'emails.
+    $mails_raw = $form_state->getValue('adviser_mails');
+    $mails = array_values(array_filter(
+    array_map('trim', explode("\n", $mails_raw))
+    ));
+
     $this->config(self::CONFIG_NAME)
-      ->set('slot_duration',      $form_state->getValue('slot_duration'))
-      ->set('booking_window',     $form_state->getValue('booking_window'))
-      ->set('min_notice',         $form_state->getValue('min_notice'))
-      ->set('sender_name',        $form_state->getValue('sender_name'))
-      ->set('sender_email',       $form_state->getValue('sender_email'))
-      ->set('send_confirmation',  $form_state->getValue('send_confirmation'))
-      ->set('send_reminder',      $form_state->getValue('send_reminder'))
+      ->set('slot_duration', $form_state->getValue('slot_duration'))
+      ->set('booking_window', $form_state->getValue('booking_window'))
+      ->set('min_notice', $form_state->getValue('min_notice'))
+      ->set('sender_name', $form_state->getValue('sender_name'))
+      ->set('sender_email', $form_state->getValue('sender_email'))
+      ->set('send_confirmation', $form_state->getValue('send_confirmation'))
+      ->set('send_reminder', $form_state->getValue('send_reminder'))
       ->set('calendar_first_day', $form_state->getValue('calendar_first_day'))
-      ->set('calendar_min_time',  $form_state->getValue('calendar_min_time'))
-      ->set('calendar_max_time',  $form_state->getValue('calendar_max_time'))
+      ->set('calendar_min_time', $form_state->getValue('calendar_min_time'))
+      ->set('calendar_max_time', $form_state->getValue('calendar_max_time'))
+    // Ajout.
+      ->set('adviser_mails', $mails)
       ->save();
 
-    // Message de succès + log
+    // Message de succès + log.
     parent::submitForm($form, $form_state);
-    \Drupal::logger('appointment')->info('Configuration du module appointment mise à jour.');
+    $this->loggerFactory->get('appointment')->info('Configuration du module appointment mise à jour.');
   }
 
 }

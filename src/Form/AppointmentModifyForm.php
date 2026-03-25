@@ -2,10 +2,13 @@
 
 namespace Drupal\appointment\Form;
 
+use Drupal\Component\Utility\Html;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\appointment\Service\AppointmentManager;
 use Drupal\appointment\Service\EmailService;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -15,7 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   1 → Saisie numéro de téléphone
  *   2 → Liste des RDV trouvés
  *   3 → Choix nouvelle date (FullCalendar)
- *   4 → Confirmation modification
+ *   4 → Confirmation modification.
  */
 class AppointmentModifyForm extends FormBase {
 
@@ -30,14 +33,28 @@ class AppointmentModifyForm extends FormBase {
   protected $emailService;
 
   /**
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $logger;
+
+  /**
    * {@inheritdoc}
    */
   public function __construct(
     AppointmentManager $appointment_manager,
     EmailService $email_service,
+    EntityTypeManagerInterface $entity_type_manager,
+    LoggerChannelFactoryInterface $logger_factory,
   ) {
     $this->appointmentManager = $appointment_manager;
     $this->emailService       = $email_service;
+    $this->entityTypeManager  = $entity_type_manager;
+    $this->logger             = $logger_factory->get('appointment');
   }
 
   /**
@@ -47,6 +64,8 @@ class AppointmentModifyForm extends FormBase {
     return new static(
       $container->get('appointment.manager'),
       $container->get('appointment.email'),
+      $container->get('entity_type.manager'),
+      $container->get('logger.factory'),
     );
   }
 
@@ -69,7 +88,7 @@ class AppointmentModifyForm extends FormBase {
     $step = $form_state->get('step') ?? 1;
     $form_state->set('step', $step);
 
-    $form = match($step) {
+    $form = match ($step) {
       1 => $this->buildStep1($form, $form_state),
       2 => $this->buildStep2($form, $form_state),
       3 => $this->buildStep3($form, $form_state),
@@ -120,17 +139,17 @@ class AppointmentModifyForm extends FormBase {
     ];
 
     foreach ($appointments as $appointment) {
-      $id      = $appointment->id();
-      $ref     = $appointment->get('reference')->value;
-      $date    = new \DateTime($appointment->get('appointment_date')->value);
+      $id       = $appointment->id();
+      $ref      = $appointment->get('reference')->value;
+      $date     = new \DateTime($appointment->get('appointment_date')->value);
       $date_end = clone $date;
       $date_end->modify('+30 minutes');
 
-      $agency  = $this->appointmentManager->getAgencies()[$appointment->get('agency')->target_id] ?? '—';
+      $agency = $this->appointmentManager->getAgencies()[$appointment->get('agency')->target_id] ?? '—';
       $adviser_id = $appointment->get('adviser')->target_id;
-      $adviser_user = \Drupal::entityTypeManager()->getStorage('user')->load($adviser_id);
+      $adviser_user = $this->entityTypeManager->getStorage('user')->load($adviser_id);
       $adviser = $adviser_user ? $adviser_user->getDisplayName() : '—';
-      $type_term = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->load(
+      $type_term = $this->entityTypeManager->getStorage('taxonomy_term')->load(
         $appointment->get('appointment_type')->target_id
       );
       $type = $type_term ? $type_term->label() : '—';
@@ -140,12 +159,12 @@ class AppointmentModifyForm extends FormBase {
           <div class="appointment-item">
             <div class="appointment-item-info">
               <strong>' . $this->t('Rendez-vous le @date à @time', [
-                '@date' => $date->format('d/m/Y'),
-                '@time' => $date->format('H\hi'),
-              ]) . '</strong><br>
-              ' . $this->t('Avec') . ' <em>' . \Drupal\Component\Utility\Html::escape($adviser) . '</em><br>
-              ' . $this->t('Agence de rendez-vous :') . ' ' . \Drupal\Component\Utility\Html::escape($agency) . '<br>
-              ' . $this->t('Type de rendez-vous :') . ' ' . \Drupal\Component\Utility\Html::escape($type) . '
+          '@date' => $date->format('d/m/Y'),
+          '@time' => $date->format('H\hi'),
+        ]) . '</strong><br>
+              ' . $this->t('Avec') . ' <em>' . Html::escape($adviser) . '</em><br>
+              ' . $this->t('Agence de rendez-vous :') . ' ' . Html::escape($agency) . '<br>
+              ' . $this->t('Type de rendez-vous :') . ' ' . Html::escape($type) . '
             </div>
             <div class="appointment-item-actions">
               <a href="#" class="btn-modify" data-id="' . $id . '">' . $this->t('Modifier') . '</a>
@@ -155,7 +174,7 @@ class AppointmentModifyForm extends FormBase {
         ',
       ];
 
-      // Boutons cachés déclenchés par les liens JS
+      // Boutons cachés déclenchés par les liens JS.
       $form['actions']['modify_' . $id] = [
         '#type'                    => 'submit',
         '#value'                   => 'modify_' . $id,
@@ -189,13 +208,13 @@ class AppointmentModifyForm extends FormBase {
     ];
 
     $appointment_id = $form_state->get('selected_appointment_id');
-    $appointment    = \Drupal::entityTypeManager()
+    $appointment    = $this->entityTypeManager
       ->getStorage('appointment')->load($appointment_id);
     $adviser_id     = $appointment->get('adviser')->target_id;
 
     $slots = $this->appointmentManager->getAvailableSlots($adviser_id);
 
-    $form['#attached']['library'][]                           = 'appointment/fullcalendar';
+    $form['#attached']['library'][]                                   = 'appointment/fullcalendar';
     $form['#attached']['drupalSettings']['appointment']['slots']      = $slots;
     $form['#attached']['drupalSettings']['appointment']['adviser_id'] = $adviser_id;
 
@@ -243,10 +262,10 @@ class AppointmentModifyForm extends FormBase {
           <div class="confirmation-icon">✓</div>
           <h2>' . $this->t('Votre rendez-vous a bien été modifié') . '</h2>
           <p>' . $this->t('Nouvelle date : <strong>@date</strong> de <strong>@start</strong> à <strong>@end</strong>', [
-            '@date'  => $date_obj->format('d/m/Y'),
-            '@start' => $date_obj->format('H\hi'),
-            '@end'   => $date_end->format('H\hi'),
-          ]) . '</p>
+        '@date'  => $date_obj->format('d/m/Y'),
+        '@start' => $date_obj->format('H\hi'),
+        '@end'   => $date_end->format('H\hi'),
+      ]) . '</p>
           <a href="/prendre-un-rendez-vous">' . $this->t('Prendre un nouveau rendez-vous') . '</a>
         </div>
       ',
@@ -266,29 +285,31 @@ class AppointmentModifyForm extends FormBase {
     $step    = $form_state->get('step');
     $trigger = $form_state->getTriggeringElement()['#name'] ?? '';
 
-    // Validation étape 1 : téléphone + RDV existant
+    // Validation étape 1 : téléphone + RDV existant.
     if ($step === 1) {
       $phone        = $form_state->getValue('phone');
       $appointments = $this->appointmentManager->findByPhone($phone);
 
       if (empty($appointments)) {
-        $form_state->setErrorByName('phone',
+        $form_state->setErrorByName(
+          'phone',
           $this->t('Aucun rendez-vous trouvé pour ce numéro de téléphone.')
         );
         return;
       }
-      // Stocker pour buildStep2
+      // Stocker pour buildStep2.
       $form_state->set('appointments', $appointments);
     }
 
-    // Validation étape 3 : créneau sélectionné
-    if ($step === 3 && str_starts_with($trigger, 'next') === false) {
+    // Validation étape 3 : créneau sélectionné.
+    if ($step === 3 && str_starts_with($trigger, 'next') === FALSE) {
       return;
     }
     if ($step === 3) {
       $date = $form_state->getValue('appointment_date');
       if (empty($date)) {
-        $form_state->setErrorByName('appointment_date',
+        $form_state->setErrorByName(
+          'appointment_date',
           $this->t('Veuillez sélectionner un créneau.')
         );
       }
@@ -299,31 +320,31 @@ class AppointmentModifyForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-  $appointments = $form_state->get('appointments');
-  if ($appointments) {
-    $storage = $form_state->getStorage();
-    $storage['phone'] = $form_state->getValue('phone');
-    $form_state->setStorage($storage);
-    $form_state->set('step', 2);
-    $form_state->setRebuild(TRUE);
+    $appointments = $form_state->get('appointments');
+    if ($appointments) {
+      $storage = $form_state->getStorage();
+      $storage['phone'] = $form_state->getValue('phone');
+      $form_state->setStorage($storage);
+      $form_state->set('step', 2);
+      $form_state->setRebuild(TRUE);
+    }
   }
-}
 
   /**
    * Aller vers la modification d'un RDV spécifique.
    */
   public function goToModify(array &$form, FormStateInterface $form_state): void {
-  $trigger = $form_state->getTriggeringElement();
-  $id      = str_replace('modify_', '', $trigger['#name']);
+    $trigger = $form_state->getTriggeringElement();
+    $id      = str_replace('modify_', '', $trigger['#name']);
 
-  $storage = $form_state->getStorage();
-  $storage['selected_appointment_id'] = (int) $id;
-  $form_state->setStorage($storage);
+    $storage = $form_state->getStorage();
+    $storage['selected_appointment_id'] = (int) $id;
+    $form_state->setStorage($storage);
 
-  $form_state->set('selected_appointment_id', (int) $id);
-  $form_state->set('step', 3);
-  $form_state->setRebuild(TRUE);
-}
+    $form_state->set('selected_appointment_id', (int) $id);
+    $form_state->set('step', 3);
+    $form_state->setRebuild(TRUE);
+  }
 
   /**
    * Annuler (soft delete) un RDV.
@@ -332,7 +353,7 @@ class AppointmentModifyForm extends FormBase {
     $trigger = $form_state->getTriggeringElement();
     $id      = str_replace('delete_', '', $trigger['#name']);
 
-    $appointment = \Drupal::entityTypeManager()
+    $appointment = $this->entityTypeManager
       ->getStorage('appointment')->load((int) $id);
 
     if ($appointment) {
@@ -340,7 +361,7 @@ class AppointmentModifyForm extends FormBase {
         $this->emailService->sendCancellation($appointment);
       }
       catch (\Exception $e) {
-        \Drupal::logger('appointment')->warning('Email annulation non envoyé : @msg', ['@msg' => $e->getMessage()]);
+        $this->logger->warning('Email annulation non envoyé : @msg', ['@msg' => $e->getMessage()]);
       }
       $this->appointmentManager->cancelAppointment((int) $id);
       $this->messenger()->addStatus(
@@ -350,7 +371,7 @@ class AppointmentModifyForm extends FormBase {
       );
     }
 
-    // Revenir à l'étape 1
+    // Revenir à l'étape 1.
     $form_state->set('step', 1);
     $form_state->setRebuild(TRUE);
   }
@@ -359,17 +380,17 @@ class AppointmentModifyForm extends FormBase {
    * Retour à la liste des RDV (étape 2).
    */
   public function backToList(array &$form, FormStateInterface $form_state): void {
-  $storage = $form_state->getStorage();
-  $phone   = $storage['phone'] ?? NULL;
+    $storage = $form_state->getStorage();
+    $phone   = $storage['phone'] ?? NULL;
 
-  if ($phone) {
-    $appointments = $this->appointmentManager->findByPhone($phone);
-    $form_state->set('appointments', $appointments);
+    if ($phone) {
+      $appointments = $this->appointmentManager->findByPhone($phone);
+      $form_state->set('appointments', $appointments);
+    }
+
+    $form_state->set('step', 2);
+    $form_state->setRebuild(TRUE);
   }
-
-  $form_state->set('step', 2);
-  $form_state->setRebuild(TRUE);
-}
 
   /**
    * Valider le nouveau créneau et sauvegarder.
@@ -378,7 +399,7 @@ class AppointmentModifyForm extends FormBase {
     $new_date = rtrim($form_state->getValue('appointment_date'), 'Z');
     $appointment_id = $form_state->get('selected_appointment_id');
 
-    $appointment = \Drupal::entityTypeManager()
+    $appointment = $this->entityTypeManager
       ->getStorage('appointment')->load($appointment_id);
 
     if ($appointment && $new_date) {
@@ -389,7 +410,7 @@ class AppointmentModifyForm extends FormBase {
         $this->emailService->sendModification($appointment);
       }
       catch (\Exception $e) {
-        \Drupal::logger('appointment')->warning('Email modification non envoyé : @msg', ['@msg' => $e->getMessage()]);
+        $this->logger->warning('Email modification non envoyé : @msg', ['@msg' => $e->getMessage()]);
       }
 
       $form_state->set('new_date', $new_date);

@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Service d'envoi d'emails pour les rendez-vous.
@@ -31,16 +32,23 @@ class EmailService {
   protected $entityTypeManager;
 
   /**
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $logger;
+
+  /**
    * {@inheritdoc}
    */
   public function __construct(
     MailManagerInterface $mail_manager,
     LanguageManagerInterface $language_manager,
     EntityTypeManagerInterface $entity_type_manager,
+    LoggerChannelFactoryInterface $logger_factory,
   ) {
     $this->mailManager       = $mail_manager;
     $this->languageManager   = $language_manager;
     $this->entityTypeManager = $entity_type_manager;
+    $this->logger            = $logger_factory->get('appointment');
   }
 
   // ---------------------------------------------------------------------------
@@ -85,12 +93,13 @@ class EmailService {
    * Construit le tableau de paramètres pour hook_mail().
    *
    * @param \Drupal\appointment\Entity\Appointment $appointment
-   * @param string $type  'confirmation' | 'modification' | 'cancellation'
+   * @param string $type
+   *   'confirmation' | 'modification' | 'cancellation'.
    *
    * @return array
    */
   protected function buildParams(Appointment $appointment, string $type): array {
-    // Charger les entités liées pour avoir leurs labels
+    // Charger les entités liées pour avoir leurs labels.
     $agency = $this->entityTypeManager
       ->getStorage('agency')
       ->load($appointment->get('agency')->target_id);
@@ -103,14 +112,14 @@ class EmailService {
       ->getStorage('taxonomy_term')
       ->load($appointment->get('appointment_type')->target_id);
 
-    // Formater la date lisible
-    $raw_date    = $appointment->get('appointment_date')->value;
-    $date_obj    = new \DateTime($raw_date);
-    $date_end    = clone $date_obj;
+    // Formater la date lisible.
+    $raw_date = $appointment->get('appointment_date')->value;
+    $date_obj = new \DateTime($raw_date);
+    $date_end = clone $date_obj;
     $date_end->modify('+30 minutes');
 
-    $date_label  = $date_obj->format('d/m/Y');
-    $time_label  = $date_obj->format('H\hi') . ' - ' . $date_end->format('H\hi');
+    $date_label = $date_obj->format('d/m/Y');
+    $time_label = $date_obj->format('H\hi') . ' - ' . $date_end->format('H\hi');
 
     return [
       'type'           => $type,
@@ -129,14 +138,17 @@ class EmailService {
   /**
    * Envoie l'email via le MailManager Drupal.
    *
-   * @param string $to     Adresse destinataire.
-   * @param array  $params Paramètres du mail.
+   * @param string $to
+   *   Adresse destinataire.
+   * @param array $params
+   *   Paramètres du mail.
    */
   protected function send(string $to, array $params): void {
     $langcode = $this->languageManager->getCurrentLanguage()->getId();
 
     $result = $this->mailManager->mail(
-      module:   'appointment',  // → déclenche hook_mail() dans appointment.module
+    // → déclenche hook_mail() dans appointment.module
+      module:   'appointment',
       key:      $params['type'],
       to:       $to,
       langcode: $langcode,
@@ -144,7 +156,7 @@ class EmailService {
     );
 
     if (!$result['result']) {
-      \Drupal::logger('appointment')->error(
+      $this->logger->error(
         'Échec envoi email @type à @to pour RDV @ref',
         [
           '@type' => $params['type'],

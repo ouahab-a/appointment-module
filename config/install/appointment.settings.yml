@@ -8,4 +8,9 @@ send_reminder: false
 calendar_first_day: 1
 calendar_min_time: '08:00:00'
 calendar_max_time: '18:00:00'
-adviser_mails: []
+adviser_mails:
+  - ahmed.benali@agency.ma
+  - fatima.idrissi@agency.ma
+  - karim.mansouri@agency.ma
+  - sara.alaoui@agency.ma
+  - youssef.elamrani@agency.ma

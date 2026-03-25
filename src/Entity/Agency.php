@@ -64,16 +64,14 @@ use Drupal\views\EntityViewsData;
   ],
   field_ui_base_route: 'entity.agency.settings',
 )]
-class Agency extends ContentEntityBase implements AgencyInterface
-{
+class Agency extends ContentEntityBase implements AgencyInterface {
 
   use EntityChangedTrait;
 
   /**
    * {@inheritdoc}
    */
-  public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array
-  {
+  public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
 
     $fields = parent::baseFieldDefinitions($entity_type);
 
@@ -177,7 +175,7 @@ class Agency extends ContentEntityBase implements AgencyInterface
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['opening_hours'] = BaseFieldDefinition::create('string_long')
-      ->setLabel(t('Horaires d\'ouverture'))
+      ->setLabel(t("Horaires d'ouverture"))
       ->setDescription(t('Ex: Lun-Ven 08h30-17h00'))
       ->setDisplayOptions('form', ['type' => 'string_textarea', 'weight' => 14])
       ->setDisplayConfigurable('form', TRUE)
@@ -185,4 +183,5 @@ class Agency extends ContentEntityBase implements AgencyInterface
 
     return $fields;
   }
+
 }

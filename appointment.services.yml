@@ -3,6 +3,7 @@ services:
     class: Drupal\appointment\Service\AppointmentManager
     arguments:
       - '@entity_type.manager'
+      - '@config.factory'
 
   appointment.email:
     class: Drupal\appointment\Service\EmailService
@@ -10,6 +11,7 @@ services:
       - '@plugin.manager.mail'
       - '@language_manager'
       - '@entity_type.manager'
+      - '@logger.factory'
   appointment.uninstall:
     class: Drupal\appointment\Service\UninstallService
     arguments:

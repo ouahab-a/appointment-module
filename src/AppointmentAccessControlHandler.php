@@ -26,7 +26,7 @@ final class AppointmentAccessControlHandler extends EntityAccessControlHandler {
       return AccessResult::allowed()->cachePerPermissions();
     }
 
-    return match($operation) {
+    return match ($operation) {
       'view' => AccessResult::allowedIfHasPermission($account, 'view appointment'),
       'update' => AccessResult::allowedIfHasPermission($account, 'edit appointment'),
       'delete' => AccessResult::allowedIfHasPermission($account, 'delete appointment'),
