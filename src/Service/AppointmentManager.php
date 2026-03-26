@@ -2,6 +2,7 @@
 
 namespace Drupal\appointment\Service;
 
+use Drupal\Core\Database\DatabaseExceptionWrapper;
 use Drupal\appointment\Entity\Appointment;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -266,8 +267,19 @@ class AppointmentManager {
       'status'             => 1,
     ]);
 
-    $appointment->save();
-    return $appointment;
+    try {
+      $appointment->save();
+      return $appointment;
+    }
+    catch (DatabaseExceptionWrapper | \PDOException $e) {
+      // Duplicate key (unique index) or other DB-level errors related to
+      // concurrent inserts indicate the slot has just been taken.
+      throw new \RuntimeException('Ce créneau vient d\'être réservé. Veuillez en choisir un autre.');
+    }
+    catch (\Exception $e) {
+      // Re-throw other exceptions to be handled by the caller.
+      throw $e;
+    }
   }
 
   /**

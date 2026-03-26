@@ -7,7 +7,7 @@
 
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\field\Entity\FieldConfig;
-
+use Drupal\Core\Entity\EntityStorageDefinitionInterface;
 /**
  * Implements hook_install().
  */
@@ -17,6 +17,11 @@ function appointment_install(): void
   // Le rôle adviser est créé via user.role.adviser.yml.
   _appointment_create_roles();
   _appointment_create_appointment_types();
+  // Ensure active_slot_key field storage and unique index exist on fresh installs.
+  // This reuses the update logic that is also available as update hook 11001.
+  if (function_exists('appointment_update_11001')) {
+    appointment_update_11001();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -92,3 +97,87 @@ function appointment_uninstall(): void {
   // Delegate uninstall logic to service (DI inside service).
   \Drupal::service('appointment.uninstall')->uninstall();
 }
+
+/**
+ * Installe le champ et l'index UNIQUE anti double booking.
+ *
+ * Le champ `active_slot_key` est NULL quand le rendez-vous est annulé,
+ * sinon il vaut : adviser_id|appointment_date.
+ */
+function appointment_update_11001(): void {
+  $entity_type_id = 'appointment';
+  $field_name = 'active_slot_key';
+
+  // 1) Installer la storage du champ si nécessaire.
+  $entity_type = \Drupal::entityTypeManager()->getDefinition($entity_type_id, FALSE);
+  if (!$entity_type) {
+    return;
+  }
+
+  $base_definitions = \Drupal\appointment\Entity\Appointment::baseFieldDefinitions($entity_type);
+  if (!isset($base_definitions[$field_name])) {
+    return;
+  }
+
+  $definition = $base_definitions[$field_name];
+  // Ces informations sont utilisées par EntityDefinitionUpdateManager.
+  $definition->setName($field_name);
+  $definition->setProvider($entity_type_id);
+
+  $update_manager = \Drupal::service('entity.definition_update_manager');
+  $update_manager->installFieldStorageDefinition(
+    $field_name,
+    $entity_type_id,
+    $definition->getProvider(),
+    $definition,
+  );
+
+  // 2) Mettre à jour les données existantes pour remplir active_slot_key.
+  $storage = \Drupal::entityTypeManager()->getStorage($entity_type_id);
+  $query = $storage->getQuery()->accessCheck(FALSE);
+  $query->condition('appointment_status', ['pending', 'confirmed'], 'IN');
+  $ids = $query->execute();
+
+  if (!empty($ids)) {
+    $appointments = $storage->loadMultiple($ids);
+    foreach ($appointments as $appointment) {
+      $adviser_id = (string) $appointment->get('adviser')->target_id;
+      $date = (string) $appointment->get('appointment_date')->value;
+      $appointment->set('active_slot_key', $adviser_id !== '' && $date !== '' ? $adviser_id . '|' . $date : NULL);
+      $appointment->save();
+    }
+  }
+
+  // Annulés : active_slot_key = NULL.
+  $query_cancelled = $storage->getQuery()->accessCheck(FALSE);
+  $query_cancelled->condition('appointment_status', 'cancelled');
+  $ids_cancelled = $query_cancelled->execute();
+
+  if (!empty($ids_cancelled)) {
+    $appointments = $storage->loadMultiple($ids_cancelled);
+    foreach ($appointments as $appointment) {
+      $appointment->set('active_slot_key', NULL);
+      $appointment->save();
+    }
+  }
+
+  // 3) Ajouter l'index UNIQUE.
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('appointment') && $schema->fieldExists('appointment', $field_name)) {
+    $index_name = 'appointment__active_slot_key__uniq';
+    try {
+      $schema->addUniqueKey('appointment', $index_name, [$field_name]);
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('appointment')->warning(
+        'Impossible d\'ajouter l\\\'index unique %index_name sur appointment.%field_name : %message',
+        [
+          '%index_name' => $index_name,
+          '%field_name' => $field_name,
+          '%message' => $e->getMessage(),
+        ]
+      );
+    }
+  }
+}
+

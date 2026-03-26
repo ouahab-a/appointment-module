@@ -32,6 +32,48 @@ function appointment_theme(): array
         'current_step' => 1,
       ],
     ],
+    'appointment_email_confirmation' => [
+      'template' => 'appointment-email-confirmation',
+      'variables' => [
+        'reference' => NULL,
+        'date' => NULL,
+        'time' => NULL,
+        'agency' => NULL,
+        'adviser' => NULL,
+        'customer_name' => NULL,
+        'customer_email' => NULL,
+        'customer_phone' => NULL,
+        'rdv_type' => NULL,
+      ],
+    ],
+    'appointment_email_modification' => [
+      'template' => 'appointment-email-modification',
+      'variables' => [
+        'reference' => NULL,
+        'date' => NULL,
+        'time' => NULL,
+        'agency' => NULL,
+        'adviser' => NULL,
+        'customer_name' => NULL,
+        'customer_email' => NULL,
+        'customer_phone' => NULL,
+        'rdv_type' => NULL,
+      ],
+      ],
+    'appointment_email_cancellation' => [
+      'template' => 'appointment-email-cancellation',
+      'variables' => [
+        'reference' => NULL,
+        'date' => NULL,
+        'time' => NULL,
+        'agency' => NULL,
+        'adviser' => NULL,
+        'customer_name' => NULL,
+        'customer_email' => NULL,
+        'customer_phone' => NULL,
+        'rdv_type' => NULL,
+      ],
+      ],
   ];
 }
 
@@ -86,63 +128,72 @@ function appointment_mail(string $key, array &$message, array $params): void
   $message['headers']['Content-Type'] = 'text/html; charset=UTF-8';
   $message['headers']['MIME-Version'] = '1.0';
 
-  $name = $params['customer_name'];
-  $ref  = $params['reference'];
-  $date = $params['date_label'];
-  $time = $params['time_label'];
-  $ag   = $params['agency_name'];
-  $adv  = $params['adviser_name'];
-  $type = $params['rdv_type'];
+  $name = $params['customer_name'] ?? '';
+  $ref  = $params['reference'] ?? '';
+  $date = $params['date_label'] ?? '';
+  $time = $params['time_label'] ?? '';
+  $ag   = $params['agency_name'] ?? '';
+  $adv  = $params['adviser_name'] ?? '';
+  $type = $params['rdv_type'] ?? '';
+
+  $renderer = \Drupal::service('renderer');
 
   switch ($key) {
     case 'confirmation':
       $message['subject'] = "Confirmation de votre rendez-vous {$ref}";
-      $body = "
-        <p>Bonjour <strong>{$name}</strong>,</p>
-        <p>Votre rendez-vous a bien été enregistré.</p>
-        <table style='width:100%; border-collapse: collapse;'>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Référence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ref}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Type</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$type}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Agence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ag}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Conseiller</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$adv}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Date</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$date}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Heure</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$time}</td></tr>
-        </table>
-        <p>Vous pouvez modifier votre RDV en renseignant votre numéro de téléphone 
-           sur <a href='/modifier-rendez-vous'>cette page</a>.</p>
-        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
-      ";
-      // Markup::create est LA clé pour que Symfony Mailer affiche du HTML
-      $message['body'][] = Markup::create($body);
+      $build = [
+        '#theme' => 'appointment_email_confirmation', // ou modification / cancellation
+        // transmettre les variables attendues par la template
+        '#reference' => $params['reference'] ?? '',
+        '#date' => $params['date_label'] ?? '',
+        '#time' => $params['time_label'] ?? '',
+        '#agency' => $params['agency_name'] ?? '',
+        '#adviser' => $params['adviser_name'] ?? '',
+        '#customer_name' => $params['customer_name'] ?? '',
+        '#customer_email' => $params['customer_email'] ?? '',
+        '#customer_phone' => $params['customer_phone'] ?? '',
+        '#rdv_type' => $params['rdv_type'] ?? '',
+      ];
+      $html = (string) $renderer->renderPlain($build);
+      $message['body'][] = Markup::create($html);
       break;
 
     case 'modification':
       $message['subject'] = "Modification de votre rendez-vous {$ref}";
-      $body = "
-        <p>Bonjour <strong>{$name}</strong>,</p>
-        <p>Votre rendez-vous a bien été modifié.</p>
-        <table style='width:100%; border-collapse: collapse;'>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Référence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ref}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Agence</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$ag}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Conseiller</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$adv}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Nouvelle date</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$date}</td></tr>
-          <tr><td style='padding: 8px; border: 1px solid #ddd;'><strong>Nouvel horaire</strong></td><td style='padding: 8px; border: 1px solid #ddd;'>{$time}</td></tr>
-        </table>
-        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
-      ";
-      $message['body'][] = Markup::create($body);
+      $build = [
+        '#theme' => 'appointment_email_modification', // ou modification / cancellation
+        // transmettre les variables attendues par la template
+        '#reference' => $params['reference'] ?? '',
+        '#date' => $params['date_label'] ?? '',
+        '#time' => $params['time_label'] ?? '',
+        '#agency' => $params['agency_name'] ?? '',
+        '#adviser' => $params['adviser_name'] ?? '',
+        '#customer_name' => $params['customer_name'] ?? '',
+        '#customer_email' => $params['customer_email'] ?? '',
+        '#customer_phone' => $params['customer_phone'] ?? '',
+        '#rdv_type' => $params['rdv_type'] ?? '',
+      ];
+      $html = (string) $renderer->renderPlain($build);
+      $message['body'][] = Markup::create($html);
       break;
 
     case 'cancellation':
       $message['subject'] = "Annulation de votre rendez-vous {$ref}";
-      $body = "
-        <p>Bonjour <strong>{$name}</strong>,</p>
-        <p>Votre rendez-vous du <strong>{$date}</strong> à <strong>{$time}</strong> a bien été annulé.</p>
-        <p>Référence annulée : <strong>{$ref}</strong></p>
-        <p>Pour prendre un nouveau rendez-vous : <a href='/prendre-un-rendez-vous'>cliquez ici</a>.</p>
-        <p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
-      ";
-      $message['body'][] = Markup::create($body);
+      $build = [
+        '#theme' => 'appointment_email_cancellation', // ou modification / cancellation
+        // transmettre les variables attendues par la template
+        '#reference' => $params['reference'] ?? '',
+        '#date' => $params['date_label'] ?? '',
+        '#time' => $params['time_label'] ?? '',
+        '#agency' => $params['agency_name'] ?? '',
+        '#adviser' => $params['adviser_name'] ?? '',
+        '#customer_name' => $params['customer_name'] ?? '',
+        '#customer_email' => $params['customer_email'] ?? '',
+        '#customer_phone' => $params['customer_phone'] ?? '',
+        '#rdv_type' => $params['rdv_type'] ?? '',
+      ];
+      $html = (string) $renderer->renderPlain($build);
+      $message['body'][] = Markup::create($html);
       break;
   }
 }

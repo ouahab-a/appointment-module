@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\appointment\Entity;
 
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\Attribute\ContentEntityType;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityDeleteForm;
@@ -67,6 +68,25 @@ use Drupal\views\EntityViewsData;
 class Appointment extends ContentEntityBase implements AppointmentInterface {
 
   use EntityChangedTrait;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage): void {
+    parent::preSave($storage);
+    $status = (string) ($this->get('appointment_status')->value ?? '');
+    $adviser_id = (string) ($this->get('adviser')->target_id ?? '');
+    $date = (string) ($this->get('appointment_date')->value ?? '');
+    // active_slot_key:
+    // - pending/confirmed => "adviser|date" (unique)
+    // - cancelled         => NULL (UNIQUE accepte plusieurs NULL en MySQL)
+    if (in_array($status, ['pending', 'confirmed'], TRUE) && $adviser_id !== '' && $date !== '') {
+      $this->set('active_slot_key', $adviser_id . '|' . $date);
+    }
+    else {
+      $this->set('active_slot_key', NULL);
+    }
+  }
 
   /**
    * {@inheritdoc}
@@ -241,6 +261,15 @@ class Appointment extends ContentEntityBase implements AppointmentInterface {
       ->setLabel(t('Notes'))
       ->setDisplayOptions('form', ['type' => 'text_textarea', 'weight' => 18])
       ->setDisplayConfigurable('form', TRUE);
+
+    // Clé technique pour empêcher le double booking en base.
+    // UNIQUE index sur active_slot_key (ajouté via update hook).
+    // NULL quand le RDV est annulé pour autoriser l'historique.
+    $fields['active_slot_key'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Active slot key'))
+      ->setDescription(t('Technical unique key used to prevent double booking.'))
+      ->setSettings(['max_length' => 128])
+      ->setReadOnly(TRUE);
 
     // Référence unique (ex: RDV-2024-XXXX)
     $fields['reference'] = BaseFieldDefinition::create('string')

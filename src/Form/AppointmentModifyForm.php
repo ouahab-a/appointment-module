@@ -135,7 +135,7 @@ class AppointmentModifyForm extends FormBase {
     $appointments = $form_state->get('appointments');
 
     $form['step_title'] = [
-      '#markup' => '<h2>' . $this->t('Votre rendez-vous a été confirmé, suivez les étapes si vous souhaitez le modifier') . '</h2>',
+      '#markup' => '<h2>' . $this->t('Votre rendez-vous a été creé, suivez les étapes si vous souhaitez le modifier') . '</h2>',
     ];
 
     foreach ($appointments as $appointment) {

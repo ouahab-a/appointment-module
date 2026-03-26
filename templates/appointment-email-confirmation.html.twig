@@ -1,0 +1,37 @@
+<p>Bonjour <strong>{{ customer_name }}</strong>,</p>
+
+<p>Votre rendez-vous a bien été enregistré.</p>
+
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Référence</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ reference }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Type</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ rdv_type }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Agence</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ agency }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Conseiller</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ adviser }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Date</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ date }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Heure</strong></td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{{ time }}</td>
+  </tr>
+</table>
+
+<p>
+  Vous pouvez modifier votre RDV en renseignant votre numéro de téléphone sur
+  <a href="/modifier-rendez-vous">cette page</a>.
+</p>
+
+<p>Cordialement,<br>L'équipe de gestion des rendez-vous</p>
